@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarCheck2, ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
+import { CalendarCheck2, CalendarPlus, ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
 import { getMyLessons, type LessonView } from "@/server/dal/schedule";
 import { PageHeader } from "@/components/app/page-header";
 import { LessonCard } from "@/components/app/lesson-card";
@@ -140,6 +140,19 @@ export default async function SchedulePage({ searchParams }: { searchParams: SP 
           </div>
         </>
       )}
+
+      <Link
+        href="/schedule/calendar"
+        className="mt-7 flex items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/10 hover:bg-muted/40"
+        data-testid="calendar-teaser"
+      >
+        <CalendarPlus className="size-5 shrink-0 text-primary" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium">Расписание в календаре телефона</span>
+          <span className="block text-sm text-muted-foreground">Переносы и отмены обновятся сами</span>
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      </Link>
     </>
   );
 }

@@ -309,6 +309,19 @@ export const dismissedCard = pgTable(
   (t) => [primaryKey({ columns: [t.studentId, t.cardKey] })],
 );
 
+/* ───────────── Подписка на расписание (.ics) ───────────── */
+
+// Личная ссылка на календарь. Храним только SHA-256 токена: сам токен видит лишь студент
+// в момент выпуска. Перевыпуск заменяет хеш — старая ссылка сразу перестаёт работать.
+export const calendarToken = pgTable("calendar_token", {
+  studentId: uuid("student_id")
+    .primaryKey()
+    .references(() => student.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull().unique(),
+  createdAt: ts("created_at").defaultNow().notNull(),
+  lastUsedAt: ts("last_used_at"),
+});
+
 /* ───────────── Связи ───────────── */
 
 export const studentRelations = relations(student, ({ one, many }) => ({
