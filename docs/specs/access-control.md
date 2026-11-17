@@ -16,7 +16,7 @@
 - Сессия: случайный токен в cookie `httpOnly`, `SameSite=Lax`, `Secure` при https; запись сессии в БД, срок 7 дней.
 - Роль (`student` | `staff`) — поле `user.role`, `input: false`: передать её с клиента нельзя.
 - **Наружу открыты только три эндпоинта Better Auth**: `POST /sign-in/username`, `POST /sign-out`, `GET /get-session` (белый список в `src/app/api/auth/[...all]/route.ts`, остальное — 404, плюс `disabledPaths`). Смена пароля, логина, имени, отзыв сессий и вход по email закрыты: логин и пароль демо-аккаунтов публичны, и любой мог бы сломать их всему жюри (находка аудита К1).
-- Rate limit Better Auth: `/sign-in/username` — 10 попыток в минуту с адреса.
+- Rate limit Better Auth: `/sign-in/username` — 30 попыток в минуту с IP. IP за прокси: `x-forwarded-for` (один адрес) или `x-real-ip`; цепочка разбирается по `AUTH_TRUSTED_PROXIES`. Если IP не определён, Better Auth использует общий счётчик, поэтому после деплоя заголовки проверяем.
 
 ## Где проверяется доступ
 

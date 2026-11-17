@@ -116,7 +116,7 @@ test("действие методиста, отправленное студен
 // Находка аудита К1: Better Auth открывал change-password, update-user и др. —
 // любой мог сменить пароль или логин общего демо-аккаунта и сломать вход всему жюри.
 test("служебные эндпоинты Better Auth закрыты, вход после попыток по-прежнему работает", async ({ playwright, baseURL }) => {
-  const api = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { Origin: baseURL! } });
+  const api = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { Origin: baseURL!, "X-Forwarded-For": process.env.E2E_CLIENT_IP ?? "10.9.9.9" } });
   const signIn = await api.post("/api/auth/sign-in/username", { data: { username: "orlov", password: "demo2026" } });
   expect(signIn.status()).toBe(200);
 
@@ -138,9 +138,26 @@ test("служебные эндпоинты Better Auth закрыты, вход
 
   const [u] = await sql<{ username: string; name: string }>(`select username, name from "user" where email = 'orlov@demo.invalid'`);
   expect(u).toEqual({ username: "orlov", name: "Максим Орлов" });
-  const again = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { Origin: baseURL! } });
+  const again = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { Origin: baseURL!, "X-Forwarded-For": process.env.E2E_CLIENT_IP ?? "10.9.9.9" } });
   expect((await again.post("/api/auth/sign-in/username", { data: { username: "orlov", password: "demo2026" } })).status()).toBe(200);
   expect((await again.get("/api/auth/get-session")).status()).toBe(200);
   await again.dispose();
   await api.dispose();
+});
+
+// Находка аудита В1: без определения IP все попадали в один общий счётчик, и чужие ошибки
+// блокировали вход остальным. Теперь лимит — на IP: перебор с одного адреса не мешает другому.
+test("лимит входа считается по IP: перебор с одного адреса не блокирует другой", async ({ playwright, baseURL }) => {
+  const attackerIp = `10.66.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
+  const attacker = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { Origin: baseURL!, "X-Forwarded-For": attackerIp } });
+  const codes: number[] = [];
+  for (let i = 0; i < 32; i++) {
+    codes.push((await attacker.post("/api/auth/sign-in/username", { data: { username: "sokolova", password: `wrong-${i}` } })).status());
+  }
+  expect(codes).toContain(429); // перебор упёрся в лимит
+  await attacker.dispose();
+
+  const other = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { Origin: baseURL!, "X-Forwarded-For": `10.77.${Math.floor(Math.random() * 250)}.1` } });
+  expect((await other.post("/api/auth/sign-in/username", { data: { username: "sokolova", password: "demo2026" } })).status()).toBe(200);
+  await other.dispose();
 });

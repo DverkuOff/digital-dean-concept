@@ -59,10 +59,25 @@ export const auth = betterAuth({
     window: 60,
     max: 100,
     customRules: {
-      "/sign-in/username": { window: 60, max: 10 },
+      // Пароль демо публичный, поэтому лимит не про жюри, а против перебора чужих аккаунтов.
+      // 30 в минуту на IP: несколько экспертов за одним NAT не мешают друг другу.
+      "/sign-in/username": { window: 60, max: 30 },
     },
   },
   advanced: {
+    // IP клиента за прокси хостинга (находка аудита В1). Better Auth доверяет X-Forwarded-For
+    // только с одним адресом; цепочку «клиент, прокси» разбирает по AUTH_TRUSTED_PROXIES,
+    // иначе берёт X-Real-IP, который выставляет ингресс. После деплоя проверить заголовки (README).
+    ipAddress: {
+      ipAddressHeaders: (process.env.AUTH_IP_HEADERS ?? "x-forwarded-for,x-real-ip")
+        .split(",")
+        .map((h) => h.trim().toLowerCase())
+        .filter(Boolean),
+      trustedProxies: (process.env.AUTH_TRUSTED_PROXIES ?? "")
+        .split(",")
+        .map((h) => h.trim())
+        .filter(Boolean),
+    },
     // Куки сессии: httpOnly + SameSite=Lax (по умолчанию), Secure на https.
     useSecureCookies: process.env.BETTER_AUTH_URL?.startsWith("https://") ?? false,
   },

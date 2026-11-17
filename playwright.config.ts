@@ -2,6 +2,10 @@ import { defineConfig, devices } from "@playwright/test";
 
 // E2E-тесты идут против продакшен-сборки на :3100. Перед прогоном база сбрасывается в демо-состояние.
 const PORT = 3100;
+// Свой «IP клиента» на каждый прогон: лимит входа считается по IP, и повторный прогон
+// в ту же минуту не должен упираться в счётчик предыдущего (находка аудита В1).
+const RUN_IP = process.env.E2E_CLIENT_IP ?? `10.${(Date.now() >> 16) % 250}.${(Date.now() >> 8) % 250}.${Math.floor(Math.random() * 250) + 1}`;
+process.env.E2E_CLIENT_IP = RUN_IP;
 const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({
@@ -16,6 +20,7 @@ export default defineConfig({
     channel: process.env.PW_CHANNEL || undefined,
     baseURL,
     locale: "ru-RU",
+    extraHTTPHeaders: { "X-Forwarded-For": RUN_IP },
     timezoneId: "Europe/Moscow",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
