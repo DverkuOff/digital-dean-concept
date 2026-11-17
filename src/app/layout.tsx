@@ -7,6 +7,8 @@ export const metadata: Metadata = {
   title: { default: "Ориентир — цифровой деканат (концепт)", template: "%s · Ориентир" },
   description: "Концепт личного кабинета студента для конкурса MGIMO×AI CHALLENGE. Не официальный сервис, данные вымышлены.",
   robots: { index: false, follow: false },
+  appleWebApp: { capable: true, title: "Ориентир", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {

@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Bell, ChevronRight, LogOut, ShieldCheck } from "lucide-react";
+import { Bell, ChevronRight, ShieldCheck } from "lucide-react";
 import { requireStudent, requireUser } from "@/server/session";
-import { signOutAction } from "@/server/actions/auth";
 import { PageHeader } from "@/components/app/page-header";
-import { Button } from "@/components/ui/button";
+import { SignOutButton } from "@/components/app/sign-out-button";
 
 export const metadata: Metadata = { title: "Профиль" };
 
@@ -64,11 +63,9 @@ export default async function ProfilePage() {
         </p>
       </div>
 
-      <form action={signOutAction} className="mt-6">
-        <Button variant="outline" size="lg" className="w-full">
-          <LogOut aria-hidden /> Выйти
-        </Button>
-      </form>
+      <div className="mt-6">
+        <SignOutButton />
+      </div>
     </>
   );
 }

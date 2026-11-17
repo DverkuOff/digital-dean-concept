@@ -1,8 +1,6 @@
-import { LogOut } from "lucide-react";
 import { requireStaff } from "@/server/session";
-import { signOutAction } from "@/server/actions/auth";
 import { Logo } from "@/components/app/logo";
-import { Button } from "@/components/ui/button";
+import { SignOutButton } from "@/components/app/sign-out-button";
 
 // Роль проверяется на сервере: студент получает 404, без сессии — редирект на вход.
 export default async function StaffLayout({ children }: LayoutProps<"/staff">) {
@@ -14,11 +12,7 @@ export default async function StaffLayout({ children }: LayoutProps<"/staff">) {
           <Logo />
           <div className="flex items-center gap-2">
             <span className="hidden text-sm text-muted-foreground sm:inline">{staff.name} · учебный офис</span>
-            <form action={signOutAction}>
-              <Button variant="ghost" size="icon" aria-label="Выйти">
-                <LogOut aria-hidden />
-              </Button>
-            </form>
+            <SignOutButton compact />
           </div>
         </div>
       </header>

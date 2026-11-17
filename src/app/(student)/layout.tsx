@@ -1,14 +1,18 @@
+import { createHash } from "node:crypto";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { requireStudent } from "@/server/session";
 import { countMyUnread } from "@/server/dal/notifications";
 import { Logo } from "@/components/app/logo";
 import { BottomNav, TopNav } from "@/components/app/nav";
+import { PwaClient } from "@/components/app/pwa";
 
 // Проверка сессии и роли в layout: студенческий раздел недоступен без входа и методисту (404).
 export default async function StudentLayout({ children }: LayoutProps<"/">) {
   const me = await requireStudent();
   const unread = await countMyUnread();
+  // Ключ раздела офлайн-кэша: не секрет и не id, только чтобы кэши разных людей на одном устройстве не смешивались.
+  const userKey = createHash("sha256").update(`orientir-cache:${me.id}`).digest("hex").slice(0, 16);
 
   return (
     <>
@@ -43,6 +47,7 @@ export default async function StudentLayout({ children }: LayoutProps<"/">) {
           </div>
         </div>
       </header>
+      <PwaClient userKey={userKey} renderedAt={new Date().toISOString()} />
       <main className="pb-tabbar mx-auto w-full max-w-4xl flex-1 px-4 pt-5 md:pb-12">{children}</main>
       <BottomNav />
     </>
