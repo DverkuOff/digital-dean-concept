@@ -15,6 +15,7 @@
 - Хеш пароля: **argon2id** (`@node-rs/argon2`, m=19 MiB, t=2, p=1 — рекомендация OWASP), `src/server/password.ts`. В БД `account.password` начинается с `$argon2id$v=19$m=19456,t=2,p=1$`.
 - Сессия: случайный токен в cookie `httpOnly`, `SameSite=Lax`, `Secure` при https; запись сессии в БД, срок 7 дней.
 - Роль (`student` | `staff`) — поле `user.role`, `input: false`: передать её с клиента нельзя.
+- **Наружу открыты только три эндпоинта Better Auth**: `POST /sign-in/username`, `POST /sign-out`, `GET /get-session` (белый список в `src/app/api/auth/[...all]/route.ts`, остальное — 404, плюс `disabledPaths`). Смена пароля, логина, имени, отзыв сессий и вход по email закрыты: логин и пароль демо-аккаунтов публичны, и любой мог бы сломать их всему жюри (находка аудита К1).
 - Rate limit Better Auth: `/sign-in/username` — 10 попыток в минуту с адреса.
 
 ## Где проверяется доступ
@@ -59,6 +60,7 @@
 
 | Сценарий | Ожидание |
 |---|---|
+| `update-user`, `change-password`, `revoke-sessions`, `list-sessions`, `sign-in/email`, `sign-up/email`, `delete-user`… | **404**, логин и имя в БД не изменились, вход работает |
 | Без входа на `/today`, `/requests`, `/staff`, `/rating` | редирект на `/login` |
 | Неверный пароль | «Неверный логин или пароль» |
 | Соколова открывает `/requests/<id заявки Орлова>` | **HTTP 404**, имени Орлова на странице нет |

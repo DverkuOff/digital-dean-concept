@@ -17,6 +17,26 @@ export const auth = betterAuth({
       verification: schema.verification,
     },
   }),
+  // Второй рубеж к белому списку в app/api/auth/[...all]/route.ts: эти пути выключены и в самом Better Auth.
+  disabledPaths: [
+    "/sign-up/email",
+    "/sign-in/email",
+    "/change-password",
+    "/set-password",
+    "/update-user",
+    "/change-email",
+    "/delete-user",
+    "/revoke-session",
+    "/revoke-sessions",
+    "/revoke-other-sessions",
+    "/list-sessions",
+    "/list-accounts",
+    "/is-username-available",
+    "/request-password-reset",
+    "/reset-password",
+    "/send-verification-email",
+    "/verify-email",
+  ],
   emailAndPassword: {
     enabled: true,
     // Регистрации нет: аккаунты создаёт деканат (в демо — сид).

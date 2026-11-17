@@ -111,3 +111,35 @@ test("действие методиста, отправленное студен
   const [row2] = await sql<{ status: string }>(`select status from request where id = $1`, [targetId]);
   expect(row2.status).toBe("ready");
 });
+
+// Находка аудита К1: Better Auth открывал change-password, update-user и др. —
+// любой мог сменить пароль или логин общего демо-аккаунта и сломать вход всему жюри.
+test("служебные эндпоинты Better Auth закрыты, вход после попыток по-прежнему работает", async ({ playwright, baseURL }) => {
+  const api = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { Origin: baseURL! } });
+  const signIn = await api.post("/api/auth/sign-in/username", { data: { username: "orlov", password: "demo2026" } });
+  expect(signIn.status()).toBe(200);
+
+  const attacks: [string, string, unknown?][] = [
+    ["POST", "/api/auth/update-user", { username: "orlov_x", name: "Взломщик" }],
+    ["POST", "/api/auth/change-password", { currentPassword: "demo2026", newPassword: "hacked12345", revokeOtherSessions: true }],
+    ["POST", "/api/auth/revoke-sessions", {}],
+    ["POST", "/api/auth/revoke-other-sessions", {}],
+    ["GET", "/api/auth/list-sessions"],
+    ["POST", "/api/auth/sign-in/email", { email: "orlov@demo.invalid", password: "demo2026" }],
+    ["POST", "/api/auth/is-username-available", { username: "orlov" }],
+    ["POST", "/api/auth/sign-up/email", { email: "x@demo.invalid", password: "demo20266", name: "x" }],
+    ["POST", "/api/auth/delete-user", {}],
+  ];
+  for (const [method, path, data] of attacks) {
+    const res = method === "GET" ? await api.get(path) : await api.post(path, { data });
+    expect(res.status(), `${method} ${path}`).toBe(404);
+  }
+
+  const [u] = await sql<{ username: string; name: string }>(`select username, name from "user" where email = 'orlov@demo.invalid'`);
+  expect(u).toEqual({ username: "orlov", name: "Максим Орлов" });
+  const again = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { Origin: baseURL! } });
+  expect((await again.post("/api/auth/sign-in/username", { data: { username: "orlov", password: "demo2026" } })).status()).toBe(200);
+  expect((await again.get("/api/auth/get-session")).status()).toBe(200);
+  await again.dispose();
+  await api.dispose();
+});
