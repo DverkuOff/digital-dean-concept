@@ -64,7 +64,7 @@ export async function getTodayCards(now = new Date()) {
     db
       .select({ id: news.id, title: news.title, body: news.body, publishedAt: news.publishedAt })
       .from(news)
-      .where(and(eq(news.important, true), gte(news.publishedAt, addDays(now, -3)), or(isNull(news.faculty), eq(news.faculty, me.faculty)))),
+      .where(and(eq(news.important, true), gte(news.publishedAt, addDays(now, -7)), or(isNull(news.faculty), eq(news.faculty, me.faculty)))),
     db.select({ key: dismissedCard.cardKey }).from(dismissedCard).where(eq(dismissedCard.studentId, me.id)),
   ]);
 

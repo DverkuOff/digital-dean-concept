@@ -147,7 +147,7 @@ export function buildTodayCards(input: TodayInput): TodayCard[] {
     }
   }
 
-  // 5. Важные новости последних трёх дней.
+  // 5. Важные новости последней недели.
   for (const n of input.news) {
     cards.push({
       key: `news:${n.id}`,

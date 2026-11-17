@@ -23,6 +23,8 @@ export default async function GradesPage() {
   const closedSemesters = [...new Set(grades.filter((g) => g.semester < currentSemester).map((g) => g.semester))].sort((a, b) => b - a);
   const session = attempts.filter((a) => a.kind === "main" && a.result === "scheduled" && a.scheduledAt && a.scheduledAt > now);
   const retakes = attempts.filter((a) => a.kind !== "main" && a.result === "scheduled" && a.scheduledAt && a.scheduledAt > now);
+  // Пересдача уже прошла, а результат не внесён — не выдаём её за будущую.
+  const pendingRetake = attempts.find((a) => a.kind !== "main" && a.result === "scheduled" && a.scheduledAt && a.scheduledAt <= now);
   const nameOf = (id: string) => grades.find((g) => g.disciplineId === id)?.name ?? "";
 
   const sliceAvg = (g: GradeView) => {
@@ -57,7 +59,9 @@ export default async function GradesPage() {
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
               Рейтинг <b className="text-foreground">{formatScore(rating.rating)}</b> из 100.{" "}
-              {retakes.length > 0 && retakes[0].scheduledAt
+              {pendingRetake?.scheduledAt
+                ? `Пересдача прошла ${formatDayMonth(pendingRetake.scheduledAt)}, результат ещё не внесён.`
+                : retakes.length > 0 && retakes[0].scheduledAt
                 ? `Пересдача ${relativeDay(retakes[0].scheduledAt, now)}, ${formatDayMonth(retakes[0].scheduledAt)}.`
                 : weakOpen.length
                   ? `В этом семестре стоит подтянуть: ${weakOpen.map((g) => g.shortName).join(", ")}.`

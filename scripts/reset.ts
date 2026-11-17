@@ -13,7 +13,9 @@ async function main() {
     await db.execute(sql`create schema public`);
     await runMigrations(db);
     const t = Date.now();
-    await seed(db);
+    // SEED_DAYS_AGO=N — засеять «как будто сброс был N дней назад» (проверка, доживёт ли демо до итогов).
+    const daysAgo = Number(process.env.SEED_DAYS_AGO ?? 0) || 0;
+    await seed(db, new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000));
     console.log(`Демо сброшено за ${((Date.now() - t) / 1000).toFixed(1)} с. Логины: ${DEMO_USERNAMES.join(", ")}; пароль: ${DEMO_PASSWORD}`);
   } finally {
     await pool.end();

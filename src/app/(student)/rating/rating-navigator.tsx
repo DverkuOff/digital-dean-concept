@@ -281,10 +281,16 @@ function RetakeBlock({ d, now, value, onChange }: { d: DebtInfo; now: Date; valu
             >
               <span className="text-[11px] font-medium leading-tight">{s.label}</span>
               <span className="mt-1 text-base font-semibold tabular-nums leading-none">
-                {s.result === "failed" ? s.score : s.result === "scheduled" ? "→" : s.result === "passed" ? s.score : "·"}
+                {s.result === "failed" ? s.score : s.result === "scheduled" ? (at && at < now ? "?" : "→") : s.result === "passed" ? s.score : "·"}
               </span>
-              <span className="mt-1 text-[10px] leading-tight">
-                {at ? (s.result === "scheduled" ? relativeDay(at, now) : formatDayMonth(at)) : "если понадобится"}
+              <span className="mt-1 text-[11px] leading-tight">
+                {at
+                  ? s.result === "scheduled"
+                    ? at < now
+                      ? "ждём результат"
+                      : relativeDay(at, now)
+                    : formatDayMonth(at)
+                  : "если понадобится"}
               </span>
             </li>
           );
@@ -296,8 +302,10 @@ function RetakeBlock({ d, now, value, onChange }: { d: DebtInfo; now: Date; valu
           const at = new Date(s.at!);
           return (
             <p className="mt-2 text-sm">
-              <b>{s.label}</b>: {formatDayMonth(at)}, {formatTime(at)}
-              {s.room ? `, ${s.room}` : ""}
+              <b>{s.label}</b>
+              {at < now
+                ? ` прошла ${formatDayMonth(at)}, результат ещё не внесён. Учебный офис внесёт его в течение трёх рабочих дней.`
+                : `: ${formatDayMonth(at)}, ${formatTime(at)}${s.room ? `, ${s.room}` : ""}`}
             </p>
           );
         })()}
