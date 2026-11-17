@@ -71,6 +71,7 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
                       </p>
                       <p className="text-xs text-muted-foreground">
                         № {r.number} · подана {formatDateTime(r.createdAt)}
+                        {r.assigneeName ? ` · ведёт ${r.assigneeName}` : ""}
                       </p>
                     </div>
                     <ChevronDown className="mt-2.5 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />

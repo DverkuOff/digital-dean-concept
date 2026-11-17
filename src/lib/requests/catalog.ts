@@ -14,6 +14,7 @@ export type RequestTypeDef = {
   short: string;
   description: string;
   eta: string; // ориентировочный срок
+  typicalDays: number; // обычно готовят за N рабочих дней (по данным очереди; в концепте — условно)
   icon: "file" | "shield" | "calendar" | "languages" | "refresh" | "messages";
   fields: FieldDef[];
   note?: string;
@@ -30,6 +31,7 @@ const FORMAT_FIELD: FieldDef = {
 export const REQUEST_TYPES: RequestTypeDef[] = [
   {
     key: "study_certificate",
+    typicalDays: 2,
     title: "Справка об обучении",
     short: "Справка об обучении",
     description: "По месту требования: соцзащита, СФР, работа родителей, банк, налоговый вычет.",
@@ -43,6 +45,7 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
   },
   {
     key: "military_certificate",
+    typicalDays: 3,
     title: "Справка для военкомата",
     short: "Для военкомата",
     description: "Для отсрочки и воинского учёта (форма по приложению к приказу).",
@@ -55,6 +58,7 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
   },
   {
     key: "absence_excuse",
+    typicalDays: 2,
     title: "Уважительная причина пропуска",
     short: "Пропуск по уважительной причине",
     description: "Закрыть пропуски и сохранить допуск к сессии.",
@@ -76,6 +80,7 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
   },
   {
     key: "transcript",
+    typicalDays: 4,
     title: "Выписка оценок (транскрипт)",
     short: "Выписка оценок",
     description: "Для стажировки, обмена или работы. На русском или английском.",
@@ -88,6 +93,7 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
   },
   {
     key: "retake_application",
+    typicalDays: 1,
     title: "Заявление на пересдачу",
     short: "Пересдача",
     description: "Записаться на пересдачу или попросить индивидуальный график сдачи.",
@@ -107,6 +113,7 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
   },
   {
     key: "consultation",
+    typicalDays: 1,
     title: "Консультация перед пересдачей",
     short: "Консультация",
     description: "Запись на консультацию к преподавателю через учебный офис.",

@@ -27,7 +27,7 @@ erDiagram
 | `grade` | Результат студента: 3 среза, итоговый балл, статус `open`/`passed`/`debt`, `passed_on_retake` | свои — по `student_id` |
 | `exam_attempt` | Попытки сдачи: `main`/`retake1`/`retake2`/`commission`, дата, аудитория, балл, результат. Отсюда лестница пересдач и расписание сессии | свои |
 | `lesson` | Пара группы: время, аудитория, преподаватель, тип; изменения: `status` (`moved`/`room_changed`/`cancelled`), `original_starts_at`, `original_room`, `change_note`, `changed_at` | пары своей группы |
-| `request` | Заявка: человекочитаемый `number`, `type` (ключ каталога), `status`, `payload` (jsonb, поля по каталогу), `return_reason` + `return_field` (что исправить), `staff_comment` | свои; методист — все |
+| `request` | Заявка: человекочитаемый `number`, `type` (ключ каталога), `status`, `payload` (jsonb, поля по каталогу), `return_reason` + `return_field` (что исправить), `staff_comment`, `assignee_name` (кто ведёт) | свои; методист — все |
 | `request_event` | История статусов (таймлайн): статус, комментарий, кто (`student`/`staff`), время | через свою заявку |
 | `news` | Новости деканата: общие (`faculty = null`) или факультета, `important` | все студенты (своего факультета) |
 | `notification` | Персональные уведомления: `schedule`/`deadline`/`request`/`retake`/`grade`, `due_at`, `read_at` | свои |
@@ -47,6 +47,8 @@ stateDiagram-v2
   submitted --> rejected: «Отклонить» (с причиной)
   in_progress --> rejected
 ```
+
+Прозрачность: `assignee_name` ставится, когда методист первым меняет статус. Обычный срок — `typicalDays` в каталоге (условно), ориентир считается в рабочих днях по Москве (`addBusinessDays`, праздники не учитываются). Место в очереди — число заявок «Подана», поданных раньше, плюс один: студент видит только два числа, без чужих данных.
 
 Переходы методиста — `STAFF_TRANSITIONS` в `src/lib/requests/catalog.ts`, проверяются на сервере. Каждая смена статуса пишет `request_event` и персональное уведомление студенту.
 

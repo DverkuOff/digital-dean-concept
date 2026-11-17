@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CircleCheck, ChevronLeft, MessageSquareWarning, PartyPopper } from "lucide-react";
-import { getMyRequest } from "@/server/dal/requests";
+import { getMyRequest, queuePositionOf } from "@/server/dal/requests";
 import { resubmitRequestAction } from "@/server/actions/requests";
 import { StatusBadge } from "@/components/app/status-badge";
 import { RequestForm } from "@/components/app/request-form";
 import { RequestTimeline } from "@/components/app/request-timeline";
+import { RequestTransparency } from "@/components/app/request-transparency";
 import { getRequestType, STATUS_META } from "@/lib/requests/catalog";
 
 export const metadata: Metadata = { title: "Заявка" };
@@ -18,6 +19,7 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
   const r = await getMyRequest(id);
   if (!r) notFound();
   const def = getRequestType(r.type);
+  const queue = await queuePositionOf(r);
 
   return (
     <>
@@ -37,8 +39,11 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
       </div>
       <p className="text-sm text-muted-foreground">
         № {r.number} · {STATUS_META[r.status].hint}
-        {def && ["submitted", "in_progress"].includes(r.status) && ` · срок ${def.eta}`}
       </p>
+
+      {def && !["done", "rejected"].includes(r.status) && (
+        <RequestTransparency def={def} status={r.status} createdAt={r.createdAt} assigneeName={r.assigneeName} queue={queue} />
+      )}
 
       {r.status === "returned" && def && (
         <section className="mt-5 rounded-2xl bg-warning/10 p-4 ring-1 ring-warning/60" aria-labelledby="ret">

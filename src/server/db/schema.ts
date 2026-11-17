@@ -236,6 +236,8 @@ export const request = pgTable(
     returnReason: text("return_reason"),
     returnField: text("return_field"),
     staffComment: text("staff_comment"),
+    // Кто ведёт заявку: имя методиста, взявшего её в работу (для прозрачности студенту).
+    assigneeName: text("assignee_name"),
     createdAt: ts("created_at").defaultNow().notNull(),
     updatedAt: ts("updated_at").defaultNow().notNull(),
   },

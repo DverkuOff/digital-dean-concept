@@ -21,6 +21,7 @@ export async function listQueue(filter: "active" | "all" | RequestStatus) {
       payload: request.payload,
       returnReason: request.returnReason,
       staffComment: request.staffComment,
+      assigneeName: request.assigneeName,
       createdAt: request.createdAt,
       updatedAt: request.updatedAt,
       studentName: sql<string>`${student.lastName} || ' ' || ${student.firstName}`,

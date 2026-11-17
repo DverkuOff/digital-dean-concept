@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, lt, sql } from "drizzle-orm";
 import { db } from "../db";
 import { request, requestEvent } from "../db/schema";
 import { requireStudent } from "../session";
@@ -39,4 +39,18 @@ export async function nextRequestNumber(tx: Pick<typeof db, "execute"> = db) {
   const res = await tx.execute(sql`select count(*)::int as n from ${request}`);
   const n = Number((res.rows[0] as { n: number }).n) + 1001;
   return `${new Date().getFullYear()}-${String(n).padStart(5, "0")}`;
+}
+
+/**
+ * Место своей заявки в общей очереди «Подана» — только числа, без чужих данных.
+ * Вызывать после того, как владелец уже проверен (getMyRequest).
+ */
+export async function queuePositionOf(r: { status: string; createdAt: Date }) {
+  if (r.status !== "submitted") return null;
+  const [ahead] = await db
+    .select({ n: count() })
+    .from(request)
+    .where(and(eq(request.status, "submitted"), lt(request.createdAt, r.createdAt)));
+  const [total] = await db.select({ n: count() }).from(request).where(eq(request.status, "submitted"));
+  return { position: (ahead?.n ?? 0) + 1, total: total?.n ?? 1 };
 }

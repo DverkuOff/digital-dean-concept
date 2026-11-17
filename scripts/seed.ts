@@ -10,6 +10,7 @@ import { DAY_MS, addDays, mskAt, startOfMskDay, startOfMskWeek } from "../src/li
 type DB = NodePgDatabase<typeof s>;
 
 export const DEMO_PASSWORD = "demo2026";
+const STAFF_NAME = "Елена Белова";
 export const DEMO_LOGINS = { a: "sokolova", b: "orlov", staff: "metodist" } as const;
 
 // Детерминированный ГПСЧ: одинаковые однокурсники при каждом сбросе.
@@ -134,7 +135,7 @@ export async function seed(db: DB, now = new Date()) {
   }
   const userA = await createUser(DEMO_LOGINS.a, "Анна Соколова", "student");
   const userB = await createUser(DEMO_LOGINS.b, "Максим Орлов", "student");
-  await createUser(DEMO_LOGINS.staff, "Елена Белова", "staff");
+  await createUser(DEMO_LOGINS.staff, STAFF_NAME, "staff");
 
   /* ── Студенты ── */
   const base = { faculty: FACULTY, program: PROGRAM, course: 2, cohort: COHORT, fundingType: "бюджет" };
@@ -342,7 +343,9 @@ export async function seed(db: DB, now = new Date()) {
   ) {
     const id = randomUUID();
     const last = history[history.length - 1];
+    const touchedByStaff = history.some((h) => h.actor === "staff");
     await db.insert(s.request).values({
+      assigneeName: touchedByStaff ? STAFF_NAME : null,
       id,
       number: `${now.getFullYear()}-${String(num++).padStart(5, "0")}`,
       studentId,

@@ -80,3 +80,15 @@ export function plural(n: number, one: string, few: string, many: string): strin
 const fmtScore = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
 /** Балл по-русски: 68,4. */
 export const formatScore = (n: number | null | undefined) => (n === null || n === undefined ? "—" : fmtScore.format(n));
+
+/** +n рабочих дней (пн–пт по Москве), праздники в концепте не учитываются. */
+export function addBusinessDays(from: Date, n: number): Date {
+  let d = from;
+  let left = n;
+  while (left > 0) {
+    d = addDays(d, 1);
+    const wd = new Date(d.getTime() + MSK_OFFSET_MS).getUTCDay();
+    if (wd !== 0 && wd !== 6) left--;
+  }
+  return d;
+}

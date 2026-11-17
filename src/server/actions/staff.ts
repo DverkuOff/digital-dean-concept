@@ -53,6 +53,8 @@ export async function changeStatusAction(_prev: StaffState, fd: FormData): Promi
         returnReason: to === "returned" ? comment : null,
         returnField: to === "returned" ? field : null,
         staffComment: to === "ready" || to === "rejected" ? finalComment || null : row.staffComment,
+        // Кто ведёт: методист, который первым взял заявку в работу или вернул её.
+        assigneeName: row.assigneeName ?? staff.name,
       })
       .where(eq(request.id, id));
     await tx.insert(requestEvent).values({ requestId: id, status: to, actor: "staff", comment: finalComment || null });
