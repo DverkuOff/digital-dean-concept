@@ -8,6 +8,8 @@ import { StatusBadge } from "@/components/app/status-badge";
 import { RequestForm } from "@/components/app/request-form";
 import { RequestTimeline } from "@/components/app/request-timeline";
 import { RequestTransparency } from "@/components/app/request-transparency";
+import { RequestThread } from "@/components/app/request-thread";
+import { askOfficeAction } from "@/server/actions/messages";
 import { displayFieldValue, getRequestType, STATUS_META } from "@/lib/requests/catalog";
 
 export const metadata: Metadata = { title: "Заявка" };
@@ -77,6 +79,16 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
           <p className="text-sm">{r.staffComment}</p>
         </section>
       )}
+
+      <section className="mt-6" aria-labelledby="ask">
+        <h2 id="ask" className="mb-2 text-[15px] font-semibold">Вопрос в учебный офис</h2>
+        <RequestThread
+          requestId={r.id}
+          viewer="student"
+          action={askOfficeAction}
+          messages={r.messages.map((m) => ({ id: m.id, author: m.author, authorName: m.authorName, text: m.text, createdAt: m.createdAt.toISOString() }))}
+        />
+      </section>
 
       <section className="mt-6">
         <h2 className="mb-3 text-[15px] font-semibold">История</h2>

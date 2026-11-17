@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, count, desc, eq, lt, sql } from "drizzle-orm";
 import { db } from "../db";
-import { request, requestEvent } from "../db/schema";
+import { request, requestEvent, requestMessage } from "../db/schema";
 import { requireStudent } from "../session";
 import { isUuid } from "./ids";
 
@@ -26,12 +26,11 @@ export async function getMyRequest(id: string) {
     .where(and(eq(request.id, id), eq(request.studentId, me.id)))
     .limit(1);
   if (!row) return null;
-  const events = await db
-    .select()
-    .from(requestEvent)
-    .where(eq(requestEvent.requestId, row.id))
-    .orderBy(asc(requestEvent.createdAt));
-  return { ...row, events };
+  const [events, messages] = await Promise.all([
+    db.select().from(requestEvent).where(eq(requestEvent.requestId, row.id)).orderBy(asc(requestEvent.createdAt)),
+    db.select().from(requestMessage).where(eq(requestMessage.requestId, row.id)).orderBy(asc(requestMessage.createdAt)),
+  ]);
+  return { ...row, events, messages };
 }
 
 /** Номер заявки для людей: 2026-01042. Из sequence Postgres — уникален и при одновременной подаче. */

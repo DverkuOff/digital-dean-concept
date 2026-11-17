@@ -280,6 +280,22 @@ export const requestEvent = pgTable(
   (t) => [index("request_event_request_idx").on(t.requestId)],
 );
 
+// Переписка внутри заявки: «вопрос в учебный офис» и ответ методиста.
+export const requestMessage = pgTable(
+  "request_message",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestId: uuid("request_id")
+      .notNull()
+      .references(() => request.id, { onDelete: "cascade" }),
+    author: text("author").notNull(), // "student" | "staff"
+    authorName: text("author_name").notNull(),
+    text: text("text").notNull(),
+    createdAt: ts("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("request_message_request_idx").on(t.requestId, t.createdAt)],
+);
+
 /* ───────────── Уведомления ───────────── */
 
 // Новости деканата: общие для всех (faculty = null) или для факультета.

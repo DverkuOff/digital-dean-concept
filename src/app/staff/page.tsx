@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronDown, Inbox } from "lucide-react";
-import { listQueue, queueCounts } from "@/server/dal/staff";
+import { listQueue, messagesFor, queueCounts } from "@/server/dal/staff";
+import { replyOfficeAction } from "@/server/actions/messages";
+import { RequestThread } from "@/components/app/request-thread";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -26,6 +28,7 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
   const { f } = await searchParams;
   const filter = FILTERS.find((x) => x.key === f)?.key ?? "active";
   const [rows, counts] = await Promise.all([listQueue(filter), queueCounts()]);
+  const threads = await messagesFor(rows.map((r) => r.id));
   const now = new Date();
 
   return (
@@ -76,7 +79,14 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
                     </div>
                     <div className="min-w-0 flex-1 md:contents">
                       <div className="flex items-start justify-between gap-2 md:block">
-                        <p className="font-medium leading-snug">{def?.title ?? r.type}</p>
+                        <p className="font-medium leading-snug">
+                          {def?.title ?? r.type}
+                          {r.awaitingReply && (
+                            <span className="ml-2 inline-flex rounded-full bg-info/15 px-2 align-middle text-[11px] font-medium text-info-foreground" data-testid="awaiting-reply">
+                              есть вопрос
+                            </span>
+                          )}
+                        </p>
                         <StatusBadge status={r.status} className="md:hidden" />
                       </div>
                       <p className="text-sm text-muted-foreground md:text-foreground">
@@ -120,6 +130,17 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
                       />
                     ) : (
                       <p className="text-sm text-muted-foreground">{STATUS_META[r.status].hint}</p>
+                    )}
+                    {(threads.get(r.id)?.length ?? 0) > 0 && (
+                      <div className="mt-4 border-t pt-3">
+                        <p className="mb-2 text-sm font-medium">Переписка со студентом</p>
+                        <RequestThread
+                          requestId={r.id}
+                          viewer="staff"
+                          action={replyOfficeAction}
+                          messages={(threads.get(r.id) ?? []).map((m) => ({ id: m.id, author: m.author, authorName: m.authorName, text: m.text, createdAt: m.createdAt.toISOString() }))}
+                        />
+                      </div>
                     )}
                   </div>
                 </details>

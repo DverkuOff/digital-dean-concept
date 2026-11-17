@@ -133,6 +133,13 @@ test("Заметка, календарь и офлайн (меняют данн�
   await expect(page.getByTestId("calendar-url")).toBeVisible();
   await shot(page, "sokolova_schedule_calendar");
 
+  await page.goto("/requests");
+  await page.getByTestId("request-row").filter({ hasText: "Справка об обучении" }).first().click();
+  await page.getByLabel("Вопрос учебному офису").fill("Можно забрать справку в субботу?");
+  await page.getByRole("button", { name: "Отправить вопрос" }).click();
+  await expect(page.getByTestId("message")).toHaveCount(1);
+  await shot(page, "sokolova_request_question");
+
   await page.goto("/today");
   await expect(page.locator("html[data-offline-ready='1']")).toHaveCount(1, { timeout: 20_000 });
   await ctx.setOffline(true);

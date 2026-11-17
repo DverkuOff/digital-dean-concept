@@ -28,6 +28,7 @@ erDiagram
 | `exam_attempt` | Попытки сдачи: `main`/`retake1`/`retake2`/`commission`, дата, аудитория, балл, результат. Отсюда лестница пересдач и расписание сессии | свои |
 | `lesson` | Пара группы: время, аудитория, преподаватель, тип; изменения: `status` (`moved`/`room_changed`/`cancelled`), `original_starts_at`, `original_room`, `change_note`, `changed_at` | пары своей группы |
 | `request` | Заявка: человекочитаемый `number`, `type` (ключ каталога), `status`, `payload` (jsonb, поля по каталогу), `return_reason` + `return_field` (что исправить), `staff_comment`, `assignee_name` (кто ведёт) | свои; методист — все |
+| `request_message` | Переписка внутри заявки: вопрос студента, ответ методиста | через свою заявку; отвечает только методист |
 | `request_event` | История статусов (таймлайн): статус, комментарий, кто (`student`/`staff`), время | через свою заявку |
 | `news` | Новости деканата: общие (`faculty = null`) или факультета, `important` | все студенты (своего факультета) |
 | `notification` | Персональные уведомления: `schedule`/`deadline`/`request`/`retake`/`grade`, `due_at`, `read_at` | свои |

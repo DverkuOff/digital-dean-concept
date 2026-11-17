@@ -69,7 +69,7 @@ test.describe("студент Б (Орлов)", () => {
 
     await page.goto(`/requests/${ownReturned}`);
     // Подменяем скрытое поле requestId на id чужой заявки, как сделал бы злоумышленник.
-    await page.locator('input[name="requestId"]').evaluate((el, id) => ((el as HTMLInputElement).value = id), foreignId);
+    await page.locator('section[aria-labelledby="ret"] input[name="requestId"]').evaluate((el, id) => ((el as HTMLInputElement).value = id), foreignId);
     await page.getByRole("button", { name: "Исправить и подать снова" }).click();
     await expect(page.locator("main [role=alert]")).toContainText("Заявка не найдена");
 
