@@ -12,7 +12,6 @@ test.describe("Соколова, телефон", () => {
     await page.getByLabel("Что найти").fill("справк обуч");
     const mine = page.locator('[data-testid="search-hit"][data-group="Мои заявки"]');
     await expect(mine.first()).toContainText("Справка об обучении");
-    if (process.env.SCREENSHOTS) await page.screenshot({ path: "docs/screenshots/sokolova_search.png" });
     await mine.first().click();
     await expect(page).toHaveURL(/\/requests\/[0-9a-f-]{36}$/);
     await expect(page.getByRole("heading", { name: "Справка об обучении" })).toBeVisible();

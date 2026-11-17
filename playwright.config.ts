@@ -10,6 +10,7 @@ const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: ["screens/**"],
   fullyParallel: false,
   workers: 1,
   retries: 0,

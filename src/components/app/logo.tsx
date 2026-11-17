@@ -16,7 +16,7 @@ export function Logo() {
       <LogoMark className="size-8" />
       <span className="leading-none">
         <span className="block text-[15px] font-semibold tracking-tight">Ориентир</span>
-        <span className="block text-[11px] text-muted-foreground">цифровой деканат · концепт</span>
+        <span className="block whitespace-nowrap text-[11px] text-muted-foreground">цифровой деканат · концепт</span>
       </span>
     </span>
   );

@@ -25,7 +25,6 @@ test("без сети открываются «Сегодня», «Распис�
   await page.goto("/grades");
   await expect(page.getByTestId("how-am-i")).toContainText("Есть долг");
   await expect(page.getByTestId("offline-banner")).toContainText("Нет сети");
-  if (process.env.SCREENSHOTS) await page.screenshot({ path: "docs/screenshots/orlov_offline_grades.png" });
   await page.goto("/schedule");
   await expect(page.getByRole("heading", { name: "Расписание" })).toBeVisible();
   await page.goto("/requests"); // не кэшируется

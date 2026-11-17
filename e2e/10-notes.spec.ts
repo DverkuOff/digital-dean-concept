@@ -16,7 +16,6 @@ test("Соколова сохраняет заметку, она видна по
   await card.getByRole("textbox").fill(NOTE);
   await card.getByRole("button", { name: "Сохранить" }).click();
   await expect(card.getByTestId("lesson-note")).toHaveText(NOTE);
-  if (process.env.SCREENSHOTS) await card.screenshot({ path: "docs/screenshots/sokolova_lesson_note.png" });
   await page.reload();
   await expect(page.getByTestId("lesson-note").filter({ hasText: NOTE })).toHaveCount(1);
   expect(title.length).toBeGreaterThan(0);

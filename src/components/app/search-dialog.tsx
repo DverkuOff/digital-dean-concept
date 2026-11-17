@@ -82,7 +82,7 @@ export function SearchDialog() {
         >
           <Search className="size-5 lg:size-4" aria-hidden />
           <span className="hidden lg:inline">Поиск</span>
-          <kbd className="hidden rounded bg-muted px-1.5 text-[11px] lg:inline">Ctrl K</kbd>
+          <kbd className="hidden whitespace-nowrap rounded bg-muted px-1.5 text-[11px] xl:inline">Ctrl K</kbd>
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>

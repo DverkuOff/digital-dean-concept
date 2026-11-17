@@ -13,7 +13,6 @@ test.describe("тёмная тема", () => {
       await expect(page.locator("html")).toHaveClass(/dark/);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow).toBeLessThanOrEqual(0);
-      if (process.env.SCREENSHOTS) await page.screenshot({ path: `docs/screenshots/dark_orlov${path.replace(/[/?=&]+/g, "_")}.png`, fullPage: true });
     }
     await page.goto("/profile");
     await page.getByRole("radio", { name: "Светлая" }).click();

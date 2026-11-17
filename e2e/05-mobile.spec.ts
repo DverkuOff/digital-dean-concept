@@ -18,9 +18,6 @@ for (const [who, state, pages] of [
         await expect(page.getByTestId("concept-banner")).toBeVisible();
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         expect(overflow).toBeLessThanOrEqual(0);
-        if (process.env.SCREENSHOTS) {
-          await page.screenshot({ path: `docs/screenshots/${who}${path.replace(/[/?=&]+/g, "_")}.png`, fullPage: true });
-        }
       });
     }
   });
