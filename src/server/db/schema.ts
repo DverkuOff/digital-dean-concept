@@ -211,6 +211,22 @@ export const lesson = pgTable(
   (t) => [index("lesson_group_time_idx").on(t.groupCode, t.startsAt)],
 );
 
+// Личная заметка студента к паре («принести эссе»). Видна только автору.
+export const lessonNote = pgTable(
+  "lesson_note",
+  {
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => student.id, { onDelete: "cascade" }),
+    lessonId: uuid("lesson_id")
+      .notNull()
+      .references(() => lesson.id, { onDelete: "cascade" }),
+    text: text("text").notNull(),
+    updatedAt: ts("updated_at").defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.studentId, t.lessonId] })],
+);
+
 /* ───────────── Заявки ───────────── */
 
 export const requestStatusEnum = pgEnum("request_status", [

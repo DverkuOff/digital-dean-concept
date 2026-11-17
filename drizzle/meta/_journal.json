@@ -22,6 +22,13 @@
       "when": 1794921165519,
       "tag": "0002_request_assignee",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794921535274,
+      "tag": "0003_lesson_note",
+      "breakpoints": true
     }
   ]
 }

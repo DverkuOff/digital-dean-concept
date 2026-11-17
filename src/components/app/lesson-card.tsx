@@ -2,6 +2,7 @@ import { ArrowRight, Ban, DoorOpen, MapPin, UserRound } from "lucide-react";
 import type { LessonView } from "@/server/dal/schedule";
 import { formatDayMonth, formatShortWeekday, formatTime, mskDateKey } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { LessonNote } from "@/components/app/lesson-note";
 
 const TYPE_LABEL = { lecture: "Лекция", seminar: "Семинар", language: "Язык" } as const;
 
@@ -16,6 +17,7 @@ export function LessonCard({ l, now = new Date() }: { l: LessonView; now?: Date 
   return (
     <article
       data-testid="lesson"
+      data-lesson-id={l.id}
       data-status={l.status}
       className={cn(
         "relative flex gap-3 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10",
@@ -72,6 +74,7 @@ export function LessonCard({ l, now = new Date() }: { l: LessonView; now?: Date 
             {l.changeNote}
           </p>
         )}
+        <LessonNote lessonId={l.id} note={l.note} label={l.discipline} />
       </div>
     </article>
   );
