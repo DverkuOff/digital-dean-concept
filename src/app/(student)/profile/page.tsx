@@ -1,0 +1,74 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Bell, ChevronRight, LogOut, ShieldCheck } from "lucide-react";
+import { requireStudent, requireUser } from "@/server/session";
+import { signOutAction } from "@/server/actions/auth";
+import { PageHeader } from "@/components/app/page-header";
+import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = { title: "Профиль" };
+
+export default async function ProfilePage() {
+  const me = await requireStudent();
+  const user = await requireUser();
+  const rows: [string, string][] = [
+    ["Факультет", me.faculty],
+    ["Направление", me.program],
+    ["Курс", `${me.course} курс`],
+    ["Группа", me.groupCode],
+    ["Форма обучения", `очная, ${me.fundingType}`],
+    ["Зачётная книжка", me.recordBook],
+    ["Логин", user.username ?? "—"],
+  ];
+
+  return (
+    <>
+      <PageHeader title="Профиль" />
+      <section className="rounded-2xl bg-card p-5 ring-1 ring-foreground/10">
+        <div className="flex items-center gap-4">
+          <div className="grid size-14 shrink-0 place-items-center rounded-full bg-primary text-lg font-semibold text-primary-foreground">
+            {me.firstName[0]}
+            {me.lastName[0]}
+          </div>
+          <div className="min-w-0">
+            <p className="text-lg font-semibold leading-tight" data-testid="profile-name">
+              {me.lastName} {me.firstName} {me.middleName}
+            </p>
+            <p className="text-sm text-muted-foreground">Студент · {me.groupCode}</p>
+          </div>
+        </div>
+        <dl className="mt-5 divide-y text-sm">
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-4 py-2.5">
+              <dt className="text-muted-foreground">{k}</dt>
+              <dd className="text-right font-medium">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <Link
+        href="/notifications"
+        className="mt-4 flex items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/10 hover:bg-muted/50"
+      >
+        <Bell className="size-5 text-primary" aria-hidden />
+        <span className="flex-1 font-medium">Уведомления и новости деканата</span>
+        <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
+      </Link>
+
+      <div className="mt-4 flex gap-3 rounded-2xl bg-secondary/60 p-4 text-sm text-secondary-foreground">
+        <ShieldCheck className="mt-0.5 size-5 shrink-0" aria-hidden />
+        <p>
+          Вы видите только свои данные: сервер проверяет владельца при каждом запросе. Пароль хранится в виде хеша
+          argon2id. Все данные в концепте вымышлены.
+        </p>
+      </div>
+
+      <form action={signOutAction} className="mt-6">
+        <Button variant="outline" size="lg" className="w-full">
+          <LogOut aria-hidden /> Выйти
+        </Button>
+      </form>
+    </>
+  );
+}
