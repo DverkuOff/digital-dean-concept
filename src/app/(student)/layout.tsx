@@ -6,6 +6,7 @@ import { countMyUnread } from "@/server/dal/notifications";
 import { Logo } from "@/components/app/logo";
 import { BottomNav, TopNav } from "@/components/app/nav";
 import { PwaClient } from "@/components/app/pwa";
+import { SearchDialog } from "@/components/app/search-dialog";
 
 // Проверка сессии и роли в layout: студенческий раздел недоступен без входа и методисту (404).
 export default async function StudentLayout({ children }: LayoutProps<"/">) {
@@ -23,6 +24,7 @@ export default async function StudentLayout({ children }: LayoutProps<"/">) {
           </Link>
           <TopNav />
           <div className="flex items-center gap-1">
+            <SearchDialog />
             <Link
               href="/notifications"
               className="relative grid size-10 place-items-center rounded-full hover:bg-muted"
