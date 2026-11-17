@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const ICON = { schedule: CalendarDays, retake: RefreshCcw, request: FileText, deadline: CalendarClock, news: Megaphone };
 const TONE = {
-  warning: "bg-warning/12 ring-warning/60 [&_.ic]:bg-warning [&_.ic]:text-warning-foreground",
+  warning: "bg-warning/12 ring-warning/60 [&_.ic]:bg-warning [&_.ic]:text-warning-foreground dark:[&_.ic]:text-background",
   danger: "bg-destructive/5 ring-destructive/30 [&_.ic]:bg-destructive [&_.ic]:text-white",
   success: "bg-success/10 ring-success/40 [&_.ic]:bg-success [&_.ic]:text-white",
   info: "bg-card ring-foreground/10 [&_.ic]:bg-accent [&_.ic]:text-accent-foreground",

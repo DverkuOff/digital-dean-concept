@@ -81,5 +81,5 @@ export function LessonCard({ l, now = new Date() }: { l: LessonView; now?: Date 
 }
 
 function ChangeTag({ children }: { children: React.ReactNode }) {
-  return <span className="rounded-full bg-warning px-2 text-[11px] font-semibold text-warning-foreground">{children}</span>;
+  return <span className="rounded-full bg-warning px-2 text-[11px] font-semibold text-warning-foreground dark:text-background">{children}</span>;
 }

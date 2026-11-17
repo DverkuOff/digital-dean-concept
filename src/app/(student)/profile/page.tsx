@@ -4,6 +4,7 @@ import { Bell, ChevronRight, ShieldCheck } from "lucide-react";
 import { requireStudent, requireUser } from "@/server/session";
 import { PageHeader } from "@/components/app/page-header";
 import { SignOutButton } from "@/components/app/sign-out-button";
+import { ThemeSwitcher } from "@/components/app/theme";
 
 export const metadata: Metadata = { title: "Профиль" };
 
@@ -54,6 +55,13 @@ export default async function ProfilePage() {
         <span className="flex-1 font-medium">Уведомления и новости деканата</span>
         <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
       </Link>
+
+      <section className="mt-4 rounded-2xl bg-card p-4 ring-1 ring-foreground/10" aria-labelledby="theme-title">
+        <h2 id="theme-title" className="mb-2 text-sm font-medium">
+          Оформление
+        </h2>
+        <ThemeSwitcher />
+      </section>
 
       <div className="mt-4 flex gap-3 rounded-2xl bg-secondary/60 p-4 text-sm text-secondary-foreground">
         <ShieldCheck className="mt-0.5 size-5 shrink-0" aria-hidden />

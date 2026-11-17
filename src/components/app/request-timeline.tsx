@@ -18,7 +18,7 @@ export function RequestTimeline({ events, status }: { events: Ev[]; status: Requ
           <span
             className={cn(
               "absolute -left-[35px] top-0 grid size-6 place-items-center rounded-full ring-4 ring-background",
-              e.status === "returned" ? "bg-warning text-warning-foreground" : e.status === "rejected" ? "bg-destructive text-white" : "bg-primary text-primary-foreground",
+              e.status === "returned" ? "bg-warning text-warning-foreground dark:text-background" : e.status === "rejected" ? "bg-destructive text-white" : "bg-primary text-primary-foreground",
             )}
           >
             {e.status === "returned" ? <CornerUpLeft className="size-3.5" /> : e.status === "rejected" ? <X className="size-3.5" /> : <Check className="size-3.5" />}
