@@ -76,3 +76,7 @@ export function plural(n: number, one: string, few: string, many: string): strin
   if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
   return many;
 }
+
+const fmtScore = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 });
+/** Балл по-русски: 68,4. */
+export const formatScore = (n: number | null | undefined) => (n === null || n === undefined ? "—" : fmtScore.format(n));

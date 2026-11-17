@@ -12,7 +12,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { TodayCard } from "@/components/app/today-card";
 import { calcRating, evaluateThresholds } from "@/lib/rating/calc";
 import { RATING_CONFIG } from "@/lib/rating/config";
-import { addDays, formatDayMonth, formatWeekday, startOfMskDay } from "@/lib/dates";
+import { addDays, formatDayMonth, formatScore, formatWeekday, startOfMskDay } from "@/lib/dates";
 
 export const metadata: Metadata = { title: "Сегодня" };
 
@@ -85,7 +85,7 @@ export default async function TodayPage() {
         className="mt-7 flex items-center gap-4 rounded-2xl bg-primary p-4 text-primary-foreground shadow-sm hover:bg-primary/90"
         data-testid="rating-teaser"
       >
-        <div className="grid size-14 shrink-0 place-items-center rounded-xl bg-white/15 text-xl font-semibold tabular-nums">{rating.rating ?? "—"}</div>
+        <div className="grid size-14 shrink-0 place-items-center rounded-xl bg-white/15 text-xl font-semibold tabular-nums">{formatScore(rating.rating)}</div>
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5 font-semibold">
             <Compass className="size-4" aria-hidden /> Мой рейтинг
@@ -94,7 +94,7 @@ export default async function TodayPage() {
             {rating.hasDebt
               ? "Долг блокирует стипендию — посмотрите, что даст пересдача"
               : nextGoal
-                ? `До порога «${nextGoal.label}» — ${nextGoal.gap} б.`
+                ? `До порога «${nextGoal.label}» — ${formatScore(nextGoal.gap)} б.`
                 : "Все пороги пройдены"}
           </p>
         </div>

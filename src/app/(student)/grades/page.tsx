@@ -5,7 +5,7 @@ import { getMyAttempts, getMyGrades, toResults, type GradeView } from "@/server/
 import { PageHeader, SectionTitle } from "@/components/app/page-header";
 import { calcRating, gradeBand } from "@/lib/rating/calc";
 import { RATING_CONFIG } from "@/lib/rating/config";
-import { formatDayMonth, formatShortWeekday, formatTime, relativeDay } from "@/lib/dates";
+import { formatDayMonth, formatScore, formatShortWeekday, formatTime, relativeDay } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Учёба" };
@@ -56,7 +56,7 @@ export default async function GradesPage() {
                 : "Все прошлые сессии закрыты без долгов"}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Рейтинг <b className="text-foreground">{rating.rating ?? "—"}</b> из 100.{" "}
+              Рейтинг <b className="text-foreground">{formatScore(rating.rating)}</b> из 100.{" "}
               {retakes.length > 0 && retakes[0].scheduledAt
                 ? `Пересдача ${relativeDay(retakes[0].scheduledAt, now)}, ${formatDayMonth(retakes[0].scheduledAt)}.`
                 : weakOpen.length

@@ -12,7 +12,7 @@ import {
   type Hypothesis,
 } from "@/lib/rating/calc";
 import { RATING_CONFIG } from "@/lib/rating/config";
-import { formatDayMonth, formatTime, relativeDay } from "@/lib/dates";
+import { formatDayMonth, formatScore, formatTime, relativeDay } from "@/lib/dates";
 import { quickRetakeRequestAction } from "@/server/actions/requests";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
@@ -76,15 +76,15 @@ export function RatingNavigator({ results, open, debts, cohort, nowIso }: Props)
             <p className="text-sm text-muted-foreground">{touched ? "Прогноз рейтинга" : "Рейтинг сейчас"}</p>
             <p className="flex items-baseline gap-2">
               <span className="text-5xl font-semibold tabular-nums tracking-tight" data-testid="rating-value">
-                {shown.rating ?? "—"}
+                {formatScore(shown.rating)}
               </span>
               <span className="text-muted-foreground">/ 100</span>
             </p>
             {touched && (
               <p className={cn("mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm font-medium", delta >= 0 ? "bg-success/15 text-success-foreground" : "bg-destructive/10 text-destructive")} data-testid="rating-delta">
                 {delta >= 0 ? <ArrowUp className="size-3.5" aria-hidden /> : <ArrowDown className="size-3.5" aria-hidden />}
-                {delta >= 0 ? "+" : ""}
-                {delta} к текущему {current.rating}
+                {delta >= 0 ? "+" : "−"}
+                {formatScore(Math.abs(delta))} к текущему {formatScore(current.rating)}
               </p>
             )}
           </div>
@@ -147,7 +147,7 @@ export function RatingNavigator({ results, open, debts, cohort, nowIso }: Props)
                   <p className="text-sm text-muted-foreground">{t.description}</p>
                 </div>
                 <span className={cn("shrink-0 text-right text-sm font-medium", t.reached ? "text-success-foreground" : t.blockedByDebt ? "text-destructive" : "text-muted-foreground")}>
-                  {t.reached ? (changed ? "откроется!" : "проходите") : t.blockedByDebt && t.gap === 0 ? "мешает долг" : `−${t.gap}`}
+                  {t.reached ? (changed ? "откроется!" : "проходите") : t.blockedByDebt && t.gap === 0 ? "мешает долг" : `−${formatScore(t.gap)}`}
                 </span>
               </li>
             );

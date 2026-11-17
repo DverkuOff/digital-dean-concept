@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Inbox } from "lucide-react";
+import { ChevronDown, Inbox } from "lucide-react";
 import { listQueue, queueCounts } from "@/server/dal/staff";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = { title: "Очередь заявок" };
 
 const FILTERS: { key: "active" | "all" | RequestStatus; label: string }[] = [
-  { key: "active", label: "В работе у офиса" },
+  { key: "active", label: "Активные" },
   { key: "submitted", label: "Новые" },
   { key: "in_progress", label: "В работе" },
   { key: "returned", label: "У студента" },
@@ -73,6 +73,7 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
                         № {r.number} · подана {formatDateTime(r.createdAt)}
                       </p>
                     </div>
+                    <ChevronDown className="mt-2.5 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
                   </summary>
                   <div className="border-t px-3.5 pb-4 pt-3">
                     <dl className="mb-3 space-y-1 text-sm">
