@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SubmitButton } from "@/components/app/submit-button";
 import { cn } from "@/lib/utils";
+import { formatFormDate } from "@/lib/requests/validate";
 
 type Props = {
   def: RequestTypeDef;
@@ -80,7 +81,20 @@ function Field({ f, value, error, highlight }: { f: FieldDef; value?: string; er
       ) : f.kind === "number" ? (
         <Input {...common} type="number" inputMode="numeric" min={f.min} max={f.max} />
       ) : f.kind === "date" ? (
-        <Input {...common} type="date" />
+        // Свой ввод вместо type=date: у type=date формат зависит от языка браузера (mm/dd/yyyy в английском Chrome).
+        <Input
+          {...common}
+          defaultValue={value ? formatFormDate(value) : ""}
+          inputMode="numeric"
+          placeholder="дд.мм.гггг"
+          maxLength={10}
+          autoComplete="off"
+          onChange={(e) => {
+            const digits = e.target.value.replace(/\D/g, "").slice(0, 8);
+            const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean);
+            e.target.value = parts.join(".");
+          }}
+        />
       ) : (
         <Input {...common} placeholder={f.placeholder} maxLength={f.maxLength} />
       )}

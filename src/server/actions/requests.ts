@@ -12,6 +12,18 @@ import { isUuid } from "../dal/ids";
 import { getRequestType } from "@/lib/requests/catalog";
 import { validatePayload } from "@/lib/requests/validate";
 
+/** Не больше 10 активных заявок у студента: защита очереди от залива скриптом (находка аудита М6). */
+const MAX_ACTIVE_REQUESTS = 10;
+const ACTIVE_STATUSES = ["submitted", "in_progress", "returned", "ready"] as const;
+
+async function activeCount(studentId: string) {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(request)
+    .where(and(eq(request.studentId, studentId), inArray(request.status, [...ACTIVE_STATUSES])));
+  return row?.n ?? 0;
+}
+
 export type FormState = { ok?: boolean; error?: string; fieldErrors?: Record<string, string>; values?: Record<string, string> };
 
 function formValues(fd: FormData): Record<string, string> {
@@ -30,6 +42,9 @@ export async function createRequestAction(_prev: FormState, fd: FormData): Promi
   const values = formValues(fd);
   const check = validatePayload(def, values);
   if (!check.ok) return { fieldErrors: check.errors, values };
+  if ((await activeCount(me.id)) >= MAX_ACTIVE_REQUESTS) {
+    return { error: `У вас уже ${MAX_ACTIVE_REQUESTS} активных заявок. Дождитесь, пока учебный офис закроет часть из них.`, values };
+  }
 
   let id = "";
   for (let attempt = 0; attempt < 3 && !id; attempt++) {
@@ -75,18 +90,23 @@ export async function resubmitRequestAction(_prev: FormState, fd: FormData): Pro
   const check = validatePayload(def, values);
   if (!check.ok) return { fieldErrors: check.errors, values };
 
-  await db.transaction(async (tx) => {
-    await tx
+  const applied = await db.transaction(async (tx) => {
+    // Условие на статус «returned» — в том же UPDATE: двойная отправка не создаст два события.
+    const updated = await tx
       .update(request)
       .set({ payload: check.data, status: "submitted", returnReason: null, returnField: null, updatedAt: new Date() })
-      .where(and(eq(request.id, row.id), eq(request.studentId, me.id)));
+      .where(and(eq(request.id, row.id), eq(request.studentId, me.id), eq(request.status, "returned")))
+      .returning({ id: request.id });
+    if (updated.length === 0) return false;
     await tx.insert(requestEvent).values({
       requestId: row.id,
       status: "submitted",
       actor: "student",
       comment: "Исправлена и подана повторно",
     });
+    return true;
   });
+  if (!applied) return { error: "Эту заявку сейчас нельзя изменить" };
 
   revalidatePath(`/requests/${row.id}`);
   revalidatePath("/requests");
@@ -123,6 +143,7 @@ export async function quickRetakeRequestAction(disciplineId: string, kind: "cons
     )
     .limit(1);
   if (existing) redirect(`/requests/${existing.id}`);
+  if ((await activeCount(me.id)) >= MAX_ACTIVE_REQUESTS) redirect("/requests");
 
   const payload: Record<string, string> =
     kind === "consultation"

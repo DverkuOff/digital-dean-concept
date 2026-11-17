@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/app/status-badge";
 import { RequestForm } from "@/components/app/request-form";
 import { RequestTimeline } from "@/components/app/request-timeline";
 import { RequestTransparency } from "@/components/app/request-transparency";
-import { getRequestType, STATUS_META } from "@/lib/requests/catalog";
+import { displayFieldValue, getRequestType, STATUS_META } from "@/lib/requests/catalog";
 
 export const metadata: Metadata = { title: "Заявка" };
 
@@ -91,7 +91,7 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
               .map((f) => (
                 <div key={f.name} className="flex justify-between gap-4 px-4 py-2.5">
                   <dt className="text-muted-foreground">{f.label}</dt>
-                  <dd className="text-right font-medium">{r.payload[f.name]}</dd>
+                  <dd className="text-right font-medium">{displayFieldValue(f, r.payload[f.name])}</dd>
                 </div>
               ))}
           </dl>

@@ -19,7 +19,7 @@ const TYPE = { lecture: "лекция", seminar: "семинар", language: "я
 
 /** Экранирование текста по RFC 5545 §3.3.11. */
 export function escapeText(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 }
 
 /** Перенос длинных строк: не длиннее 75 октетов, продолжение начинается с пробела (§3.1). */

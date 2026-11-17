@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgEnum,
+  pgSequence,
   pgTable,
   primaryKey,
   real,
@@ -237,6 +238,10 @@ export const requestStatusEnum = pgEnum("request_status", [
   "done",
   "rejected",
 ]);
+
+// Номер заявки для людей. Sequence вместо count(*)+1: при одновременной подаче count давал
+// одинаковые номера и 500 (находка аудита М2: из 20 параллельных подач 11 падали).
+export const requestNumberSeq = pgSequence("request_number_seq", { startWith: 1001 });
 
 export const request = pgTable(
   "request",

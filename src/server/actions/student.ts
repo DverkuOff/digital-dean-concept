@@ -5,6 +5,7 @@ import { db } from "../db";
 import { dismissedCard, notification } from "../db/schema";
 import { studentForAction } from "../session";
 import { isUuid } from "../dal/ids";
+import { isValidCardKey } from "@/lib/today/rules";
 
 export async function markAllReadAction() {
   const me = await studentForAction();
@@ -29,7 +30,7 @@ export async function markReadAction(id: string) {
 /** Кнопка «понял» на карточке «Сегодня». */
 export async function dismissCardAction(cardKey: string) {
   const me = await studentForAction();
-  if (!me || typeof cardKey !== "string" || cardKey.length > 200) return;
+  if (!me || !isValidCardKey(cardKey)) return;
   await db.insert(dismissedCard).values({ studentId: me.id, cardKey }).onConflictDoNothing();
   revalidatePath("/today");
 }

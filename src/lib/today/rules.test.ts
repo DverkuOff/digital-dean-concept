@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTodayCards, MAX_CARDS, stemOf, type TodayInput } from "./rules";
+import { buildTodayCards, isValidCardKey, MAX_CARDS, stemOf, type TodayInput } from "./rules";
 
 const now = new Date("2026-11-17T09:00:00+03:00");
 const h = (hours: number) => new Date(now.getTime() + hours * 3600_000);
@@ -55,5 +55,17 @@ describe("buildTodayCards", () => {
 describe("stemOf", () => {
   it("совпадает для разных падежей", () => {
     expect("по макроэкономике".includes(stemOf("Макроэкономика"))).toBe(true);
+  });
+});
+
+describe("isValidCardKey", () => {
+  it("принимает только ключи, которые строят правила", () => {
+    expect(isValidCardKey("lesson:3f1c2b4a-1111-4222-8333-944455556666:moved")).toBe(true);
+    expect(isValidCardKey("retake:3f1c2b4a-1111-4222-8333-944455556666")).toBe(true);
+    expect(isValidCardKey("request:3f1c2b4a-1111-4222-8333-944455556666:returned:1763380000000")).toBe(true);
+    expect(isValidCardKey("news:3f1c2b4a-1111-4222-8333-944455556666")).toBe(true);
+    expect(isValidCardKey("x".repeat(150))).toBe(false);
+    expect(isValidCardKey("lesson:not-a-uuid:moved")).toBe(false);
+    expect(isValidCardKey("<script>")).toBe(false);
   });
 });

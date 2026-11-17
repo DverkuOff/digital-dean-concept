@@ -2,6 +2,7 @@
 // Все даты считаются от момента запуска (now), чтобы демо не «протухало».
 import { randomUUID } from "node:crypto";
 import { hash } from "@node-rs/argon2";
+import { sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as s from "../src/server/db/schema";
 import { ARGON2_OPTIONS } from "../src/server/password-opts";
@@ -343,7 +344,6 @@ export async function seed(db: DB, now = new Date()) {
   for (let i = 0; i < lessons.length; i += 200) await db.insert(s.lesson).values(lessons.slice(i, i + 200));
 
   /* ── Заявки ── */
-  let num = 1001;
   async function addRequest(
     studentId: string,
     type: string,
@@ -354,10 +354,12 @@ export async function seed(db: DB, now = new Date()) {
     const id = randomUUID();
     const last = history[history.length - 1];
     const touchedByStaff = history.some((h) => h.actor === "staff");
+    const seq = await db.execute(sql`select nextval('request_number_seq')::int as n`);
+    const num = Number((seq.rows[0] as { n: number }).n);
     await db.insert(s.request).values({
       assigneeName: touchedByStaff ? STAFF_NAME : null,
       id,
-      number: `${now.getFullYear()}-${String(num++).padStart(5, "0")}`,
+      number: `${now.getFullYear()}-${String(num).padStart(5, "0")}`,
       studentId,
       type,
       status: last.status,

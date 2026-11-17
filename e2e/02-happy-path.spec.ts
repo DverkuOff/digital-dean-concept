@@ -66,10 +66,11 @@ test("возвращённая заявка: студент правит пол�
   await page.getByTestId("request-row").filter({ hasText: "Уважительная причина" }).click();
   await expect(page.getByTestId("return-reason")).toContainText("Исправьте дату окончания");
   await expect(page.getByText("Методист просит исправить это поле")).toBeVisible();
-  const from = await page.getByLabel(/Пропуск с/).inputValue();
-  const d = new Date(from);
-  d.setDate(d.getDate() + 2);
-  await page.getByLabel(/Пропуск по/).fill(d.toISOString().slice(0, 10));
+  const from = await page.getByLabel(/Пропуск с/).inputValue(); // «дд.мм.гггг»
+  const [dd, mm, yyyy] = from.split(".").map(Number);
+  const d = new Date(Date.UTC(yyyy, mm - 1, dd + 2));
+  const to = `${String(d.getUTCDate()).padStart(2, "0")}.${String(d.getUTCMonth() + 1).padStart(2, "0")}.${d.getUTCFullYear()}`;
+  await page.getByLabel(/Пропуск по/).fill(to);
   await page.getByRole("button", { name: "Исправить и подать снова" }).click();
   await expect(page.getByTestId("status-badge")).toHaveText("Подана");
   await expect(page.getByTestId("timeline")).toContainText("Исправлена и подана повторно");

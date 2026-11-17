@@ -1,5 +1,5 @@
 "use server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "../db";
 import { notification, request, requestEvent } from "../db/schema";
@@ -44,8 +44,10 @@ export async function changeStatusAction(_prev: StaffState, fd: FormData): Promi
       : comment;
   const field = def?.fields.find((f) => f.name === returnField)?.name ?? null;
 
-  await db.transaction(async (tx) => {
-    await tx
+  // Переход — одним UPDATE с условием на текущий статус: если два методиста нажали одновременно,
+  // второй получит 0 строк, а не двойной переход и два уведомления (находка аудита М5).
+  const applied = await db.transaction(async (tx) => {
+    const updated = await tx
       .update(request)
       .set({
         status: to,
@@ -56,7 +58,9 @@ export async function changeStatusAction(_prev: StaffState, fd: FormData): Promi
         // Кто ведёт: методист, который первым взял заявку в работу или вернул её.
         assigneeName: row.assigneeName ?? staff.name,
       })
-      .where(eq(request.id, id));
+      .where(and(eq(request.id, id), eq(request.status, row.status)))
+      .returning({ id: request.id });
+    if (updated.length === 0) return false;
     await tx.insert(requestEvent).values({ requestId: id, status: to, actor: "staff", comment: finalComment || null });
     const title =
       to === "ready"
@@ -71,9 +75,10 @@ export async function changeStatusAction(_prev: StaffState, fd: FormData): Promi
       body: finalComment || STATUS_META[to].hint,
       link: `/requests/${id}`,
     });
+    return true;
   });
+  if (!applied) return { error: "Заявку уже обработал другой сотрудник — обновите очередь" };
 
   revalidatePath("/staff");
-  revalidatePath(`/staff/requests/${id}`);
   return { ok: true };
 }

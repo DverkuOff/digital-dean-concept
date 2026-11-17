@@ -171,3 +171,12 @@ export const COMMENT_REQUIRED: RequestStatus[] = ["returned", "rejected"];
 
 /** Порядок шагов таймлайна «как посылка». */
 export const TIMELINE_STEPS: RequestStatus[] = ["submitted", "in_progress", "ready", "done"];
+
+/** Значение поля заявки для показа: даты — «дд.мм.гггг». */
+export function displayFieldValue(f: FieldDef, value: string): string {
+  if (f.kind === "date") {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    return m ? `${m[3]}.${m[2]}.${m[1]}` : value;
+  }
+  return value;
+}

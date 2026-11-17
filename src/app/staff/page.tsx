@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { StatusBadge } from "@/components/app/status-badge";
 import { RequestIcon } from "@/components/app/request-icon";
 import { StaffActions } from "./staff-actions";
-import { getRequestType, STAFF_TRANSITIONS, STATUS_META, type RequestStatus } from "@/lib/requests/catalog";
+import { displayFieldValue, getRequestType, STAFF_TRANSITIONS, STATUS_META, type RequestStatus } from "@/lib/requests/catalog";
 import { formatDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
@@ -83,7 +83,7 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
                         .map((fd) => (
                           <div key={fd.name} className="flex gap-2">
                             <dt className="shrink-0 text-muted-foreground">{fd.label}:</dt>
-                            <dd className="font-medium">{r.payload[fd.name]}</dd>
+                            <dd className="font-medium">{displayFieldValue(fd, r.payload[fd.name])}</dd>
                           </div>
                         ))}
                     </dl>

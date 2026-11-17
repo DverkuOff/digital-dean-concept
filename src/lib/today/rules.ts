@@ -173,3 +173,13 @@ export function stemOf(name: string): string {
   const w = name.toLowerCase().split(/\s+/)[0];
   return w.length > 5 ? w.slice(0, w.length - 2) : w;
 }
+
+const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const CARD_KEY_RE = new RegExp(
+  `^(lesson:${UUID}:(moved|room_changed|cancelled)|retake:${UUID}|deadline:${UUID}|news:${UUID}|request:${UUID}:(ready|returned:\\d{1,15}))$`,
+);
+
+/** «Понял» принимает только ключи, которые строят правила выше (находка аудита М6). */
+export function isValidCardKey(key: unknown): key is string {
+  return typeof key === "string" && key.length <= 120 && CARD_KEY_RE.test(key);
+}

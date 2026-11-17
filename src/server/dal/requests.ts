@@ -34,10 +34,10 @@ export async function getMyRequest(id: string) {
   return { ...row, events };
 }
 
-/** Номер заявки для людей: 2026-01042. */
+/** Номер заявки для людей: 2026-01042. Из sequence Postgres — уникален и при одновременной подаче. */
 export async function nextRequestNumber(tx: Pick<typeof db, "execute"> = db) {
-  const res = await tx.execute(sql`select count(*)::int as n from ${request}`);
-  const n = Number((res.rows[0] as { n: number }).n) + 1001;
+  const res = await tx.execute(sql`select nextval('request_number_seq')::int as n`);
+  const n = Number((res.rows[0] as { n: number }).n);
   return `${new Date().getFullYear()}-${String(n).padStart(5, "0")}`;
 }
 
