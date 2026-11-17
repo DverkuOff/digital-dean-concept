@@ -14,6 +14,7 @@ import { validatePayload } from "@/lib/requests/validate";
 
 /** Не больше 10 активных заявок у студента: защита очереди от залива скриптом (находка аудита М6). */
 const MAX_ACTIVE_REQUESTS = 10;
+const LIMIT = "limit"; // признак «лимит исчерпан» из транзакции подачи
 const ACTIVE_STATUSES = ["submitted", "in_progress", "returned", "ready"] as const;
 
 async function activeCount(studentId: string) {
@@ -42,14 +43,20 @@ export async function createRequestAction(_prev: FormState, fd: FormData): Promi
   const values = formValues(fd);
   const check = validatePayload(def, values);
   if (!check.ok) return { fieldErrors: check.errors, values };
-  if ((await activeCount(me.id)) >= MAX_ACTIVE_REQUESTS) {
-    return { error: `У вас уже ${MAX_ACTIVE_REQUESTS} активных заявок. Дождитесь, пока учебный офис закроет часть из них.`, values };
-  }
+  const limitError = { error: `У вас уже ${MAX_ACTIVE_REQUESTS} активных заявок. Дождитесь, пока учебный офис закроет часть из них.`, values };
+  if ((await activeCount(me.id)) >= MAX_ACTIVE_REQUESTS) return limitError;
 
   let id = "";
   for (let attempt = 0; attempt < 3 && !id; attempt++) {
     try {
       id = await db.transaction(async (tx) => {
+        // Подсчёт и вставка под блокировкой студента: параллельные подачи не обойдут лимит.
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${me.id}))`);
+        const [cnt] = await tx
+          .select({ n: sql<number>`count(*)::int` })
+          .from(request)
+          .where(and(eq(request.studentId, me.id), inArray(request.status, [...ACTIVE_STATUSES])));
+        if ((cnt?.n ?? 0) >= MAX_ACTIVE_REQUESTS) return LIMIT;
         const number = await nextRequestNumber(tx);
         const [row] = await tx
           .insert(request)
@@ -59,9 +66,10 @@ export async function createRequestAction(_prev: FormState, fd: FormData): Promi
         return row.id;
       });
     } catch (e) {
-      if (attempt === 2) throw e; // конфликт номера при одновременной подаче — пробуем ещё раз
+      if (attempt === 2) throw e; // сбой транзакции — пробуем ещё раз
     }
   }
+  if (id === LIMIT) return limitError;
 
   revalidatePath("/requests");
   redirect(`/requests/${id}?created=1`);

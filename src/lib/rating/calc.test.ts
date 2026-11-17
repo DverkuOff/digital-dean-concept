@@ -131,7 +131,7 @@ describe("место на курсе без чужих рейтингов", () =
   it("гистограмма считает только количество в корзинах", () => {
     const h = cohortHistogram(ratings);
     expect(h.reduce((a, b) => a + b, 0)).toBe(ratings.length);
-    expect(h[19]).toBe(1); // 95–100
+    expect(h[19]).toBe(1); // 95–100 (в сырой гистограмме; наружу уходит слитая)
     expect(h[18]).toBe(1); // 90–95
     expect(h.every((x) => Number.isInteger(x))).toBe(true);
   });
@@ -139,11 +139,20 @@ describe("место на курсе без чужих рейтингов", () =
     expect(summarizeCohort(ratings.slice(0, 9))).toBeNull();
     expect(summarizeCohort(ratings)?.n).toBe(11);
   });
+  it("крайние корзины не выдают одного-двух человек", () => {
+    const sum = summarizeCohort(ratings)!;
+    const nonZero = sum.histogram.filter((x) => x > 0);
+    expect(nonZero[0]).toBeGreaterThanOrEqual(3);
+    expect(nonZero[nonZero.length - 1]).toBeGreaterThanOrEqual(3);
+    expect(sum.histogram.reduce((a, b) => a + b, 0)).toBe(ratings.length);
+  });
+
   it("оценка по гистограмме близка к точному месту", () => {
     const sum = summarizeCohort(ratings)!;
-    for (const r of [99, 89, 75, 68.4, 50]) {
+    // Внутри курса оценка точна до 1 места; у краёв, где корзины слиты ради приватности, — до 2.
+    for (const [r, tol] of [[75, 1], [99, 1], [89, 2], [68.4, 2], [50, 2]] as const) {
       const exact = placeInCohort(r, ratings)!.place;
-      expect(Math.abs(estimatePlace(r, sum)!.place - exact)).toBeLessThanOrEqual(1);
+      expect(Math.abs(estimatePlace(r, sum)!.place - exact), String(r)).toBeLessThanOrEqual(tol);
     }
     expect(estimatePlace(null, sum)).toBeNull();
     expect(estimatePlace(80, null)).toBeNull();

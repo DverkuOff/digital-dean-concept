@@ -176,10 +176,32 @@ export function cohortHistogram(ratings: number[], width = COHORT_BUCKET): numbe
   return h;
 }
 
-/** Сводка по курсу для браузера; null — выборка слишком мала, место не показываем. */
+export const MIN_EDGE_BUCKET = 3; // в крайних корзинах не меньше 3 человек
+
+/**
+ * Сводка по курсу для браузера; null — выборка слишком мала, место не показываем.
+ * Лучших и худших на курсе все знают, поэтому крайние корзины с 1–2 людьми сливаем
+ * с соседними, пока в них не наберётся MIN_EDGE_BUCKET человек.
+ */
 export function summarizeCohort(ratings: number[]): CohortSummary | null {
   if (ratings.length < MIN_COHORT) return null;
-  return { n: ratings.length, histogram: cohortHistogram(ratings) };
+  const h = cohortHistogram(ratings);
+  const mergeEdge = (order: number[]) => {
+    let acc = 0;
+    for (let k = 0; k < order.length; k++) {
+      const i = order[k];
+      acc += h[i];
+      h[i] = 0;
+      if (acc >= MIN_EDGE_BUCKET) {
+        h[i] = acc;
+        return;
+      }
+    }
+  };
+  const idx = h.map((_, i) => i);
+  mergeEdge([...idx].reverse()); // сверху
+  mergeEdge(idx); // снизу
+  return { n: ratings.length, histogram: h };
 }
 
 /**

@@ -88,3 +88,60 @@ test("два методиста одновременно жмут «Взять �
   expect(notes[0].n).toBe(1);
   for (const { ctx } of contexts) await ctx.close();
 });
+
+// Находки ревьюера доступа: лимит активных заявок при параллельных подачах и двойная повторная подача.
+test("параллельные подачи не обходят лимит в 10 активных заявок", async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 800 } });
+  const first = await ctx.newPage();
+  await login(first, "orlov2");
+  await expect(first).toHaveURL(/\/today$/);
+  const [{ n: before }] = await sql<{ n: number }>(
+    `select count(*)::int as n from request r join student s on s.id = r.student_id join "user" u on u.id = s.user_id
+     where u.username = 'orlov2' and r.status in ('submitted','in_progress','returned','ready')`,
+  );
+  const tries = 10 - before + 4; // на 4 больше, чем позволяет лимит
+  const pages = await Promise.all(Array.from({ length: tries }, () => ctx.newPage()));
+  await Promise.all(
+    pages.map(async (p, i) => {
+      await p.goto("/requests/new?type=transcript");
+      await p.getByLabel(/Язык/).selectOption("Русский");
+      await p.getByLabel(/Для чего/).fill(`Параллельно ${i}`);
+    }),
+  );
+  await Promise.all(pages.map((p) => p.getByRole("button", { name: "Подать заявку" }).click()));
+  await Promise.all(pages.map((p) => expect(p.getByTestId("status-badge").or(p.locator("main [role=alert]"))).toBeVisible()));
+  const [{ n: after }] = await sql<{ n: number }>(
+    `select count(*)::int as n from request r join student s on s.id = r.student_id join "user" u on u.id = s.user_id
+     where u.username = 'orlov2' and r.status in ('submitted','in_progress','returned','ready')`,
+  );
+  expect(after).toBe(10);
+  await ctx.close();
+});
+
+test("двойная повторная подача возвращённой заявки даёт одно событие", async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 800 } });
+  const page = await ctx.newPage();
+  await login(page, "sokolova2");
+  await expect(page).toHaveURL(/\/today$/);
+  // Готовим возврат: заявка sokolova2 переводится методистом… быстрее — сразу в БД, это не предмет теста.
+  const [r] = await sql<{ id: string }>(
+    `update request set status = 'returned', return_reason = 'Тест', updated_at = now()
+     where id = (select r.id from request r join student s on s.id = r.student_id join "user" u on u.id = s.user_id
+                 where u.username = 'sokolova2' and r.type = 'transcript' order by r.created_at limit 1)
+     returning id`,
+  );
+  await page.goto(`/requests/${r.id}`);
+  const entries = await page.locator('section[aria-labelledby="ret"] form').evaluate((f) => {
+    const out: [string, string][] = [];
+    new FormData(f as HTMLFormElement).forEach((v, k) => out.push([k, String(v)]));
+    return out;
+  });
+  const multipart = Object.fromEntries(entries) as Record<string, string>;
+  await Promise.all([1, 2].map(() => ctx.request.post(`/requests/${r.id}`, { multipart, maxRedirects: 0 })));
+  const [{ n }] = await sql<{ n: number }>(
+    `select count(*)::int as n from request_event where request_id = $1 and comment = 'Исправлена и подана повторно'`,
+    [r.id],
+  );
+  expect(n).toBe(1);
+  await ctx.close();
+});
