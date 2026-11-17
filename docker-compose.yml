@@ -1,0 +1,20 @@
+# Локальная БД для разработки и тестов. Пароль только для локальной машины.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: orientir-db
+    environment:
+      POSTGRES_USER: orientir
+      POSTGRES_PASSWORD: orientir_local
+      POSTGRES_DB: orientir
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - orientir-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orientir -d orientir"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+volumes:
+  orientir-pgdata:
