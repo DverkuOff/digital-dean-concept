@@ -9,7 +9,7 @@ import { listNews } from "@/server/dal/notifications";
 import { SectionTitle } from "@/components/app/page-header";
 import { LessonCard } from "@/components/app/lesson-card";
 import { EmptyState } from "@/components/app/empty-state";
-import { TodayCard } from "@/components/app/today-card";
+import { TodayList } from "@/components/app/today-list";
 import { calcRating, evaluateThresholds } from "@/lib/rating/calc";
 import { RATING_CONFIG } from "@/lib/rating/config";
 import { addDays, formatDayMonth, formatScore, formatWeekday, startOfMskDay } from "@/lib/dates";
@@ -57,11 +57,7 @@ export default async function TodayPage() {
 
       <section aria-label="Что важно сегодня">
         {cards.length ? (
-          <ul className="space-y-2.5">
-            {cards.map((c) => (
-              <TodayCard key={c.key} card={c} />
-            ))}
-          </ul>
+          <TodayList cards={cards} />
         ) : (
           <EmptyState icon={Coffee} title="Всё спокойно" text="Переносов, срочных дедлайнов и новостей по заявкам нет. Деканат напишет сюда первым." />
         )}

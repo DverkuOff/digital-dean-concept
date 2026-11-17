@@ -11,7 +11,6 @@ export type FieldDef =
 export type RequestTypeDef = {
   key: string;
   title: string;
-  short: string;
   description: string;
   eta: string; // ориентировочный срок
   typicalDays: number; // обычно готовят за N рабочих дней (по данным очереди; в концепте — условно)
@@ -33,7 +32,6 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
     key: "study_certificate",
     typicalDays: 2,
     title: "Справка об обучении",
-    short: "Справка об обучении",
     description: "По месту требования: соцзащита, СФР, работа родителей, банк, налоговый вычет.",
     eta: "до 3 рабочих дней",
     icon: "file",
@@ -47,7 +45,6 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
     key: "military_certificate",
     typicalDays: 3,
     title: "Справка для военкомата",
-    short: "Для военкомата",
     description: "Для отсрочки и воинского учёта (форма по приложению к приказу).",
     eta: "до 5 рабочих дней",
     icon: "shield",
@@ -60,7 +57,6 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
     key: "absence_excuse",
     typicalDays: 2,
     title: "Уважительная причина пропуска",
-    short: "Пропуск по уважительной причине",
     description: "Закрыть пропуски и сохранить допуск к сессии.",
     eta: "до 3 рабочих дней",
     icon: "calendar",
@@ -82,7 +78,6 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
     key: "transcript",
     typicalDays: 4,
     title: "Выписка оценок (транскрипт)",
-    short: "Выписка оценок",
     description: "Для стажировки, обмена или работы. На русском или английском.",
     eta: "до 5 рабочих дней",
     icon: "languages",
@@ -95,7 +90,6 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
     key: "retake_application",
     typicalDays: 1,
     title: "Заявление на пересдачу",
-    short: "Пересдача",
     description: "Записаться на пересдачу или попросить индивидуальный график сдачи.",
     eta: "до 2 рабочих дней",
     icon: "refresh",
@@ -115,7 +109,6 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
     key: "consultation",
     typicalDays: 1,
     title: "Консультация перед пересдачей",
-    short: "Консультация",
     description: "Запись на консультацию к преподавателю через учебный офис.",
     eta: "ответ в течение 1 рабочего дня",
     icon: "messages",
@@ -137,15 +130,21 @@ export function getRequestType(key: string): RequestTypeDef | undefined {
   return REQUEST_TYPES.find((t) => t.key === key);
 }
 
+/** Одно название заявки везде: в каталоге, уведомлениях и карточках. В середине фразы — со строчной. */
+export function requestName(def: RequestTypeDef | undefined, inSentence = false): string {
+  const t = def?.title ?? "Заявка";
+  return inSentence ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+}
+
 export type RequestStatus = "submitted" | "in_progress" | "returned" | "ready" | "done" | "rejected";
 
 export const STATUS_META: Record<RequestStatus, { label: string; tone: "info" | "progress" | "warning" | "success" | "muted" | "danger"; hint: string }> = {
-  submitted: { label: "Подана", tone: "info", hint: "Учебный офис скоро возьмёт заявку в работу" },
+  submitted: { label: "Подана", tone: "info", hint: "Ждёт, пока методист возьмёт её в работу" },
   in_progress: { label: "В работе", tone: "progress", hint: "Методист готовит документ" },
-  returned: { label: "Нужны уточнения", tone: "warning", hint: "Исправьте поле и подайте снова" },
-  ready: { label: "Готова", tone: "success", hint: "Документ готов" },
+  returned: { label: "Нужно исправить", tone: "warning", hint: "Исправьте отмеченное поле и подайте снова" },
+  ready: { label: "Готова", tone: "success", hint: "Документ готов, где забрать — ниже" },
   done: { label: "Выдана", tone: "muted", hint: "Заявка закрыта" },
-  rejected: { label: "Отклонена", tone: "danger", hint: "Причина указана в истории" },
+  rejected: { label: "Отклонена", tone: "danger", hint: "Причина — в истории ниже" },
 };
 
 /** Переходы, которые может сделать методист. Проверяются на сервере. */

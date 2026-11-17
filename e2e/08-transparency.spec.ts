@@ -12,12 +12,12 @@ test("новая заявка: место в очереди и срок; пос�
   await expect(page.getByTestId("status-badge")).toHaveText("Подана");
 
   const t = page.getByTestId("transparency");
-  await expect(t).toContainText("Общая очередь учебного офиса");
+  await expect(t).toContainText("Пока никто: заявка в общей очереди");
   await expect(t).toContainText("Обычно готовят за 4 рабочих дня");
-  const pos = (await page.getByTestId("queue-position").textContent())!;
-  const [, p, total] = pos.match(/(\d+)-я из (\d+)/)!;
-  expect(Number(p)).toBe(Number(total)); // новая заявка — последняя в очереди
-  if (process.env.SCREENSHOTS) await page.screenshot({ path: "docs/screenshots/orlov_request_transparency.png", fullPage: true });
+  const qp = page.getByTestId("queue-position");
+  const [p, total] = [Number(await qp.getAttribute("data-position")), Number(await qp.getAttribute("data-total"))];
+  expect(p).toBe(total); // новая заявка — последняя в очереди
+  await expect(qp).toContainText(`Перед вами ${p - 1}`);
   const number = (await page.getByText(/№ \d{4}-\d{5}/).first().textContent())!.match(/\d{4}-\d{5}/)![0];
 
   const staff = await browser.newContext({ storageState: AUTH.staff });

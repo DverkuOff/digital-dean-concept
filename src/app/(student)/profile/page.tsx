@@ -63,13 +63,15 @@ export default async function ProfilePage() {
         <ThemeSwitcher />
       </section>
 
-      <div className="mt-4 flex gap-3 rounded-2xl bg-secondary/60 p-4 text-sm text-secondary-foreground">
-        <ShieldCheck className="mt-0.5 size-5 shrink-0" aria-hidden />
-        <p>
-          Вы видите только свои данные: сервер проверяет владельца при каждом запросе. Пароль хранится в виде хеша
-          argon2id. Все данные в концепте вымышлены.
+      <details className="mt-4 rounded-2xl bg-secondary/60 p-4 text-sm text-secondary-foreground">
+        <summary className="flex cursor-pointer items-center gap-2 font-medium">
+          <ShieldCheck className="size-5 shrink-0" aria-hidden /> Как защищены мои данные
+        </summary>
+        <p className="mt-2">
+          Вы видите только свои данные: сервер проверяет владельца при каждом запросе, чужую заявку не открыть даже по
+          прямой ссылке. Пароль хранится только в виде хеша (argon2id). Все данные в концепте вымышлены.
         </p>
-      </div>
+      </details>
 
       <div className="mt-6">
         <SignOutButton />

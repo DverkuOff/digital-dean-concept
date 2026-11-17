@@ -1,5 +1,5 @@
 // Правила главной «Сегодня»: чистая функция без БД. Спека: docs/specs/today.md.
-import { getRequestType } from "@/lib/requests/catalog";
+import { getRequestType, requestName } from "@/lib/requests/catalog";
 import { formatDayMonth, formatShortWeekday, formatTime, mskDayDiff, relativeDay } from "@/lib/dates";
 
 export type TodayInput = {
@@ -119,13 +119,13 @@ export function buildTodayCards(input: TodayInput): TodayCard[] {
   // 4. Заявки: готова или вернули.
   for (const r of input.requests) {
     const def = getRequestType(r.type);
-    const name = def?.short ?? "Заявка";
+    const name = requestName(def, true);
     if (r.status === "returned") {
       cards.push({
         key: `request:${r.id}:returned:${r.updatedAt.getTime()}`,
         tone: "warning",
         kind: "request",
-        title: `Заявку вернули: ${name.toLowerCase()}`,
+        title: `Заявку вернули: ${name}`,
         body: r.returnReason ?? "Нужно уточнение",
         href: `/requests/${r.id}`,
         cta: "Исправить",
@@ -137,7 +137,7 @@ export function buildTodayCards(input: TodayInput): TodayCard[] {
         key: `request:${r.id}:ready`,
         tone: "success",
         kind: "request",
-        title: `Готово: ${name.toLowerCase()}`,
+        title: `Готово: ${name}`,
         body: r.staffComment ?? "Документ готов",
         href: `/requests/${r.id}`,
         cta: "Подробнее",

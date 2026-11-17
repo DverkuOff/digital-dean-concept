@@ -38,7 +38,7 @@ export function RatingNavigator({ results, open, debts, cohort, placeNow, nowIso
   const now = new Date(nowIso);
   const cfg = RATING_CONFIG;
   const [debtHyp, setDebtHyp] = useState<Hypothesis>(() => Object.fromEntries(debts.map((d) => [d.disciplineId, d.lastScore])));
-  const [withSession, setWithSession] = useState(debts.length === 0);
+  const [withSession, setWithSession] = useState(false);
   const [sessionHyp, setSessionHyp] = useState<Hypothesis>(() => Object.fromEntries(open.map((o) => [o.disciplineId, o.predicted])));
 
   const current = useMemo(() => calcRating(results, cfg), [results, cfg]);
@@ -150,7 +150,8 @@ export function RatingNavigator({ results, open, debts, cohort, placeNow, nowIso
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium leading-snug">
-                    {t.label} <span className="text-sm font-normal text-muted-foreground">· от {t.min}</span>
+                    {t.label}{" "}
+                    <span className="whitespace-nowrap text-sm font-normal text-muted-foreground">от {t.min}</span>
                   </p>
                   <p className="text-sm text-muted-foreground">{t.description}</p>
                 </div>
@@ -161,6 +162,11 @@ export function RatingNavigator({ results, open, debts, cohort, placeNow, nowIso
             );
           })}
         </ul>
+        <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground" aria-label="Обозначения">
+          <span className="inline-flex items-center gap-1"><Check className="size-3.5 text-success" aria-hidden /> проходите</span>
+          <span className="inline-flex items-center gap-1"><Lock className="size-3.5" aria-hidden /> не хватает баллов</span>
+          <span className="inline-flex items-center gap-1"><X className="size-3.5 text-destructive" aria-hidden /> мешает долг</span>
+        </p>
       </section>
 
       {/* Режим пересдачи */}
@@ -273,7 +279,7 @@ function RetakeBlock({ d, now, value, onChange }: { d: DebtInfo; now: Date; valu
         Осталось попыток: <b className="text-foreground">{left}</b> · {d.credits} ЗЕТ
       </p>
 
-      <ol className="mt-4 grid grid-cols-4 gap-1.5" aria-label="Лестница попыток">
+      <ol className="mt-4 grid grid-cols-2 gap-1.5 sm:grid-cols-4" aria-label="Лестница попыток">
         {d.ladder.map((s) => {
           const at = s.at ? new Date(s.at) : null;
           return (
@@ -287,7 +293,7 @@ function RetakeBlock({ d, now, value, onChange }: { d: DebtInfo; now: Date; valu
                 !s.result && "bg-card/60 text-muted-foreground ring-foreground/10",
               )}
             >
-              <span className="text-[11px] font-medium leading-tight">{s.label}</span>
+              <span className="text-xs font-medium leading-tight">{s.label}</span>
               <span className="mt-1 text-base font-semibold tabular-nums leading-none">
                 {s.result === "failed" ? s.score : s.result === "scheduled" ? (at && at < now ? "?" : "→") : s.result === "passed" ? s.score : "·"}
               </span>

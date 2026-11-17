@@ -10,6 +10,7 @@ import {
   STAFF_TRANSITIONS,
   STATUS_META,
   getRequestType,
+  requestName,
   type RequestStatus,
 } from "@/lib/requests/catalog";
 
@@ -62,12 +63,15 @@ export async function changeStatusAction(_prev: StaffState, fd: FormData): Promi
       .returning({ id: request.id });
     if (updated.length === 0) return false;
     await tx.insert(requestEvent).values({ requestId: id, status: to, actor: "staff", comment: finalComment || null });
+    const name = requestName(def, true);
     const title =
       to === "ready"
-        ? `Готово: ${def?.short ?? "заявка"}`
+        ? `Готово: ${name}`
         : to === "returned"
-          ? `Нужны уточнения: ${def?.short ?? "заявка"}`
-          : `${STATUS_META[to].label}: ${def?.short ?? "заявка"}`;
+          ? `Заявку вернули: ${name}`
+          : to === "in_progress"
+            ? `Взяли в работу: ${name}`
+            : `${STATUS_META[to].label}: ${name}`;
     await tx.insert(notification).values({
       studentId: row.studentId,
       kind: "request",

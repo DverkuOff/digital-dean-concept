@@ -18,30 +18,34 @@ export function RequestTransparency({ def, status, createdAt, assigneeName, queu
   const due = addBusinessDays(createdAt, def.typicalDays);
   const late = active && now > due;
   const days = `${def.typicalDays} ${plural(def.typicalDays, "рабочий день", "рабочих дня", "рабочих дней")}`;
+  // Имя показываем, только когда заявку реально взяли: у поданной заново «ведёт» вводило бы в заблуждение.
+  const taken = assigneeName && (status === "in_progress" || status === "ready" || status === "done");
 
   return (
     <section className="mt-5 divide-y rounded-2xl bg-card ring-1 ring-foreground/10" aria-label="Кто ведёт и сколько ждать" data-testid="transparency">
       <Row icon={UserRound} label="Кто ведёт">
-        {assigneeName ? (
+        {taken ? (
           <>
-            <b>{assigneeName}</b> · методист учебного офиса МЭО
+            <b>{assigneeName}</b>, методист учебного офиса МЭО
           </>
         ) : (
-          "Общая очередь учебного офиса МЭО — методист возьмёт заявку в ближайшее время"
+          "Пока никто: заявка в общей очереди учебного офиса МЭО"
         )}
       </Row>
       <Row icon={Clock} label="Обычный срок">
         Обычно готовят за {days}
         {active && (
           <span className={cn("block", late ? "font-medium text-warning-foreground" : "text-muted-foreground")}>
-            {late ? `Дольше обычного: ориентир был ${formatDayMonth(due)}` : `Ориентир: до ${formatDayMonth(due)}`}
+            {late ? `Дольше обычного: ждали к ${formatDayMonth(due)}` : `Примерно к ${formatDayMonth(due)}`}
           </span>
         )}
       </Row>
       {queue && (
         <Row icon={ListOrdered} label="Место в очереди">
-          <span data-testid="queue-position">
-            {queue.position}-я из {queue.total} {plural(queue.total, "новой заявки", "новых заявок", "новых заявок")}
+          <span data-testid="queue-position" data-position={queue.position} data-total={queue.total}>
+            {queue.position === 1
+              ? "Вы первые: методист возьмёт её следующей"
+              : `Перед вами ${queue.position - 1} ${plural(queue.position - 1, "заявка", "заявки", "заявок")}`}
           </span>
         </Row>
       )}

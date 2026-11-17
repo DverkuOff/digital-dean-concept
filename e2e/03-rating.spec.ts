@@ -8,6 +8,7 @@ test.describe("рейтинг-навигатор", () => {
     await page.goto("/rating");
     await expect(page.getByTestId("rating-gauge")).toBeVisible();
     await expect(page.getByTestId("retake-mode")).toHaveCount(0);
+    await page.getByRole("checkbox", { name: "учесть" }).check();
     await page.getByRole("button", { name: "Всё на 90" }).click();
     await expect(page.getByTestId("rating-delta")).toBeVisible();
     await expect(page.getByText("условные правила концепта").first()).toBeVisible();

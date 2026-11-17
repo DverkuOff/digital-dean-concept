@@ -10,6 +10,7 @@ export function CalendarLink({ issuedAt, lastUsedAt }: { issuedAt: string | null
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [pending, start] = useTransition();
+  const [confirming, setConfirming] = useState(false);
 
   const issue = () =>
     start(async () => {
@@ -64,10 +65,36 @@ export function CalendarLink({ issuedAt, lastUsedAt }: { issuedAt: string | null
       ) : (
         <p className="text-sm text-muted-foreground">Ссылки ещё нет. Получите её — это займёт секунду.</p>
       )}
-      <Button className="mt-3 w-full" size="lg" variant={url ? "ghost" : "default"} onClick={issue} disabled={pending}>
-        {pending ? <Loader2 className="animate-spin" aria-hidden /> : issuedAt || url ? <RefreshCcw aria-hidden /> : <CalendarPlus aria-hidden />}
-        {issuedAt || url ? "Перевыпустить ссылку" : "Получить ссылку"}
-      </Button>
+      {issuedAt || url ? (
+        confirming ? (
+          <div className="mt-3 rounded-xl bg-destructive/5 p-3 ring-1 ring-destructive/20">
+            <p className="text-sm">Старая ссылка сразу перестанет работать, календарь придётся подписать заново. Перевыпустить?</p>
+            <div className="mt-2 flex gap-2">
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  setConfirming(false);
+                  issue();
+                }}
+                disabled={pending}
+              >
+                {pending ? <Loader2 className="animate-spin" aria-hidden /> : <RefreshCcw aria-hidden />} Да, перевыпустить
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirming(false)}>
+                Отмена
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button className="mt-3 w-full" variant="ghost" onClick={() => setConfirming(true)} disabled={pending}>
+            {pending ? <Loader2 className="animate-spin" aria-hidden /> : <RefreshCcw aria-hidden />} Перевыпустить ссылку
+          </Button>
+        )
+      ) : (
+        <Button className="mt-3 w-full" size="lg" onClick={issue} disabled={pending}>
+          {pending ? <Loader2 className="animate-spin" aria-hidden /> : <CalendarPlus aria-hidden />} Получить ссылку
+        </Button>
+      )}
       {error && (
         <p role="alert" className="mt-2 text-sm text-destructive">
           {error}

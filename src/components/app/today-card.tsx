@@ -15,14 +15,14 @@ const TONE = {
   info: "bg-card ring-foreground/10 [&_.ic]:bg-accent [&_.ic]:text-accent-foreground",
 };
 
-export function TodayCard({ card }: { card: Card }) {
+export function TodayCard({ card, hidden: collapsed = false }: { card: Card; hidden?: boolean }) {
   const [hidden, setHidden] = useState(false);
   const [pending, start] = useTransition();
   if (hidden) return null;
   const Icon = ICON[card.kind];
 
   return (
-    <li data-testid="today-card" data-kind={card.kind} className={cn("rounded-2xl p-4 ring-1 transition-opacity", TONE[card.tone], pending && "opacity-50")}>
+    <li data-testid="today-card" data-kind={card.kind} hidden={collapsed} className={cn("rounded-2xl p-4 ring-1 transition-opacity", TONE[card.tone], pending && "opacity-50")}>
       <div className="flex gap-3">
         <div className="ic grid size-9 shrink-0 place-items-center rounded-xl">
           <Icon className="size-4.5" aria-hidden />

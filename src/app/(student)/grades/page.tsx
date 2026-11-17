@@ -137,9 +137,16 @@ export default async function GradesPage() {
         <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">Расписание сессии ещё не опубликовано</p>
       )}
 
+      {/* Прошлые семестры свёрнуты; если там долг — раскрыты сразу. */}
+      <details className="group mt-7" open={debts.length > 0}>
+        <summary className="flex cursor-pointer list-none items-center justify-between rounded-xl py-1 text-[15px] font-semibold">
+          Прошлые семестры: итоги
+          <span className="text-sm font-normal text-primary group-open:hidden">показать</span>
+          <span className="hidden text-sm font-normal text-primary group-open:inline">свернуть</span>
+        </summary>
       {closedSemesters.map((sem) => (
         <div key={sem}>
-          <SectionTitle>{sem}-й семестр · итоги</SectionTitle>
+          <h3 className="mb-2 mt-4 text-sm font-medium text-muted-foreground">{sem}-й семестр</h3>
           <ul className="divide-y rounded-xl bg-card ring-1 ring-foreground/10">
             {grades
               .filter((g) => g.semester === sem)
@@ -157,6 +164,7 @@ export default async function GradesPage() {
           </ul>
         </div>
       ))}
+      </details>
       <p className="mt-6 text-xs text-muted-foreground">
         Перевод баллов в оценки — условные правила концепта (90+ «отлично», 75+ «хорошо», 60+ «удовлетворительно»), вуз
         настраивает их в конфиге.

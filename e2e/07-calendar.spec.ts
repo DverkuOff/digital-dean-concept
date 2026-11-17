@@ -5,7 +5,12 @@ import { AUTH } from "./helpers";
 
 async function issue(page: Page) {
   await page.goto("/schedule/calendar");
-  await page.getByRole("button", { name: /Получить ссылку|Перевыпустить ссылку/ }).click();
+  const fresh = page.getByRole("button", { name: "Получить ссылку" });
+  if (await fresh.isVisible()) await fresh.click();
+  else {
+    await page.getByRole("button", { name: "Перевыпустить ссылку" }).click();
+    await page.getByRole("button", { name: "Да, перевыпустить" }).click();
+  }
   const url = (await page.getByTestId("calendar-url").textContent())!.trim();
   expect(url).toMatch(/\/api\/calendar\/[A-Za-z0-9_-]{43}\.ics$/);
   return new URL(url).pathname;
@@ -19,7 +24,6 @@ test.describe("Орлов", () => {
     await page.getByTestId("calendar-teaser").click();
     await expect(page).toHaveURL(/\/schedule\/calendar$/);
     const first = await issue(page);
-    if (process.env.SCREENSHOTS) await page.screenshot({ path: "docs/screenshots/orlov_schedule_calendar.png", fullPage: true });
 
     // Календарное приложение приходит без cookie.
     const anon = await playwright.request.newContext({ baseURL: new URL(page.url()).origin });

@@ -41,7 +41,7 @@ erDiagram
 stateDiagram-v2
   [*] --> submitted: студент подал
   submitted --> in_progress: методист «Взять в работу»
-  submitted --> returned: «Вернуть с причиной»
+  submitted --> returned: «Вернуть с причиной» (статус «Нужно исправить»)
   in_progress --> returned: «Вернуть с причиной»
   returned --> submitted: студент исправил поле и подал снова
   in_progress --> ready: «Готово» (где забрать)

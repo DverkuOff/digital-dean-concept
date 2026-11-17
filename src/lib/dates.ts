@@ -92,3 +92,10 @@ export function addBusinessDays(from: Date, n: number): Date {
   }
   return d;
 }
+
+/** «16–21 ноября» или «30 ноября — 5 декабря». */
+export function formatDayRange(a: Date, b: Date): string {
+  const [da, ma] = formatDayMonth(a).split(" ");
+  const [db, mb] = formatDayMonth(b).split(" ");
+  return ma === mb ? `${da}–${db} ${ma}` : `${da} ${ma} — ${db} ${mb}`;
+}

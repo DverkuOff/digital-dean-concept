@@ -47,7 +47,7 @@ test("сквозной путь брифа на телефоне 360 px", async 
   const item2 = sp.getByTestId("queue-item").filter({ hasText: number });
   await item2.locator("summary").click();
   await item2.getByRole("button", { name: "Готово" }).click();
-  await expect(item2.getByTestId("status-badge")).toHaveText("Готова");
+  await expect(item2.getByTestId("status-badge").filter({ visible: true })).toHaveText("Готова");
   await staffCtx.close();
 
   // Студент видит новый статус, таймлайн и уведомление

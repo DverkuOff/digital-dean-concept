@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/app/status-badge";
 import { RequestIcon } from "@/components/app/request-icon";
 import { StaffActions } from "./staff-actions";
 import { displayFieldValue, getRequestType, STAFF_TRANSITIONS, STATUS_META, type RequestStatus } from "@/lib/requests/catalog";
-import { formatDateTime } from "@/lib/dates";
+import { addBusinessDays, formatDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Очередь заявок" };
@@ -26,6 +26,7 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
   const { f } = await searchParams;
   const filter = FILTERS.find((x) => x.key === f)?.key ?? "active";
   const [rows, counts] = await Promise.all([listQueue(filter), queueCounts()]);
+  const now = new Date();
 
   return (
     <>
@@ -50,31 +51,52 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
       {rows.length === 0 ? (
         <EmptyState icon={Inbox} title="Очередь пуста" text="Новых заявок нет — можно выдохнуть." />
       ) : (
+        <>
+        <div className="hidden px-4 pb-2 text-xs font-medium text-muted-foreground md:grid md:grid-cols-[6.5rem_minmax(0,1.4fr)_minmax(0,1fr)_9.5rem_8.5rem_1rem] md:gap-4" aria-hidden>
+          <span>№</span>
+          <span>Заявка</span>
+          <span>Студент</span>
+          <span>Подана</span>
+          <span>Статус</span>
+          <span />
+        </div>
         <ul className="space-y-2" data-testid="queue">
           {rows.map((r) => {
             const def = getRequestType(r.type);
             const can = STAFF_TRANSITIONS[r.status];
+            const late = def && ["submitted", "in_progress"].includes(r.status) && now > addBusinessDays(r.createdAt, def.typicalDays);
             return (
               <li key={r.id} id={`r-${r.id}`} data-testid="queue-item" data-request-id={r.id}>
                 <details className="group rounded-xl bg-card ring-1 ring-foreground/10 open:ring-primary/40" open={r.status === "submitted" && rows.length <= 3}>
-                  <summary className="flex cursor-pointer list-none gap-3 p-3.5">
-                    <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground">
+                  <summary className="flex cursor-pointer list-none gap-3 p-3.5 md:grid md:grid-cols-[6.5rem_minmax(0,1.4fr)_minmax(0,1fr)_9.5rem_8.5rem_1rem] md:items-center md:gap-4 md:px-4 md:py-3">
+                    {/* Телефон: карточка. Компьютер: строка таблицы — методист работает за компьютером. */}
+                    <span className="hidden text-sm tabular-nums text-muted-foreground md:block">{r.number}</span>
+                    <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground md:hidden">
                       <RequestIcon icon={def?.icon ?? "file"} />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1 md:contents">
+                      <div className="flex items-start justify-between gap-2 md:block">
                         <p className="font-medium leading-snug">{def?.title ?? r.type}</p>
-                        <StatusBadge status={r.status} />
+                        <StatusBadge status={r.status} className="md:hidden" />
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {r.studentName} · {r.groupCode}
+                      <p className="text-sm text-muted-foreground md:text-foreground">
+                        {r.studentName} <span className="text-muted-foreground">· {r.groupCode}</span>
                       </p>
-                      <p className="text-xs text-muted-foreground">
-                        № {r.number} · подана {formatDateTime(r.createdAt)}
-                        {r.assigneeName ? ` · ведёт ${r.assigneeName}` : ""}
+                      <p className="text-xs text-muted-foreground md:text-sm">
+                        <span className="md:hidden">№ {r.number} · подана </span>{formatDateTime(r.createdAt)}
+                        {late && <span className="block font-medium text-warning-foreground">дольше обычного</span>}
+                        <span className="md:hidden">
+                          {r.assigneeName && ["in_progress", "ready", "done"].includes(r.status) ? ` · ведёт ${r.assigneeName}` : ""}
+                        </span>
                       </p>
+                      <div className="hidden md:block">
+                        <StatusBadge status={r.status} />
+                        {r.assigneeName && ["in_progress", "ready", "done"].includes(r.status) && (
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">{r.assigneeName}</p>
+                        )}
+                      </div>
                     </div>
-                    <ChevronDown className="mt-2.5 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+                    <ChevronDown className="mt-2.5 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 md:mt-0" aria-hidden />
                   </summary>
                   <div className="border-t px-3.5 pb-4 pt-3">
                     <dl className="mb-3 space-y-1 text-sm">
@@ -105,6 +127,7 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
             );
           })}
         </ul>
+        </>
       )}
     </>
   );

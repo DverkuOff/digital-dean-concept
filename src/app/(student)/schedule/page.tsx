@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import {
   addDays,
   formatDayMonth,
+  formatDayRange,
   formatShortWeekday,
   formatWeekday,
   mskDateKey,
@@ -44,7 +45,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: SP 
 
   return (
     <>
-      <PageHeader title="Расписание" description={`Неделя ${formatDayMonth(weekStart)} — ${formatDayMonth(addDays(weekStart, 5))}`} />
+      <PageHeader title="Расписание" description={formatDayRange(weekStart, addDays(weekStart, 5))} />
 
       <div className="mb-4 grid grid-cols-2 rounded-xl bg-muted p-1 text-sm font-medium" role="tablist">
         <Link role="tab" aria-selected={view === "day"} href="/schedule" className={cn("rounded-lg py-2 text-center", view === "day" ? "bg-card shadow-sm" : "text-muted-foreground")}>

@@ -424,13 +424,13 @@ export async function seed(db: DB, now = new Date()) {
   const n = (studentId: string, v: Omit<typeof s.notification.$inferInsert, "studentId">) => ({ studentId, ...v });
   for (const { studentA, studentB } of sets) {
     await db.insert(s.notification).values([
-      n(studentA, { kind: "request", title: "Готово: Справка об обучении", body: readyComment, link: "/requests", createdAt: addDays(now, -0.6) }),
+      n(studentA, { kind: "request", title: "Готово: справка об обучении", body: readyComment, link: "/requests", createdAt: addDays(now, -0.6) }),
       n(studentA, { kind: "deadline", title: "Выбор темы курсовой работы", body: "Согласуйте тему с научным руководителем и отметьте её в кабинете.", dueAt: mskAt(addDays(today, 9), 18), createdAt: addDays(now, -2) }),
       n(studentA, { kind: "schedule", title: "Смена аудитории", body: "Семинар пройдёт в ауд. 1107: аудитория занята под олимпиаду.", link: "/schedule", createdAt: addDays(now, -0.8) }),
       n(studentA, { kind: "grade", title: "Выставлены баллы за 2-й срез", body: "Эконометрика: 88 из 100.", link: "/grades", createdAt: addDays(now, -6), readAt: addDays(now, -5) }),
       n(studentB, { kind: "schedule", title: "Перенос семинара по эконометрике", body: "Преподаватель на конференции, семинар перенесён на вечер.", link: "/schedule", createdAt: new Date(now.getTime() - 2 * 3600 * 1000) }),
       n(studentB, { kind: "retake", title: "Пересдача 2: Макроэкономика", body: "Пересдача назначена, ауд. 2034. Это последняя попытка перед комиссией.", link: "/rating", dueAt: mskAt(addDays(today, RETAKE_IN_DAYS), 11), createdAt: addDays(now, -3) }),
-      n(studentB, { kind: "request", title: "Нужны уточнения: Пропуск по уважительной причине", body: returnReason, link: "/requests", createdAt: addDays(now, -1) }),
+      n(studentB, { kind: "request", title: "Заявку вернули: уважительная причина пропуска", body: returnReason, link: "/requests", createdAt: addDays(now, -1) }),
       n(studentB, { kind: "deadline", title: "Заявление на пересдачу", body: "Подайте заявление на пересдачу по макроэкономике, чтобы попасть в ведомость.", link: "/requests/new?type=retake_application", dueAt: mskAt(addDays(today, 7), 18), createdAt: addDays(now, -3) }),
       n(studentB, { kind: "deadline", title: "Выбор темы курсовой работы", body: "Согласуйте тему с научным руководителем и отметьте её в кабинете.", dueAt: mskAt(addDays(today, 9), 18), createdAt: addDays(now, -2), readAt: addDays(now, -1) }),
     ]);

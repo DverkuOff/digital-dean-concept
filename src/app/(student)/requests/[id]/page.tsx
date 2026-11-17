@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CircleCheck, ChevronLeft, MessageSquareWarning, PartyPopper } from "lucide-react";
+import { CircleCheck, ChevronLeft, MessageSquareWarning } from "lucide-react";
 import { getMyRequest, queuePositionOf } from "@/server/dal/requests";
 import { resubmitRequestAction } from "@/server/actions/requests";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -28,8 +28,9 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
       </Link>
 
       {created && (
-        <p role="status" className="mb-4 flex items-center gap-2 rounded-xl bg-success/15 px-4 py-3 text-sm font-medium text-success-foreground">
-          <PartyPopper className="size-4" aria-hidden /> Заявка подана. Статус будет меняться здесь, а в шапке появится уведомление.
+        <p role="status" className="mb-4 flex items-start gap-2.5 rounded-xl bg-success/15 px-4 py-3 text-sm font-medium text-success-foreground">
+          <CircleCheck className="mt-px size-5 shrink-0" aria-hidden />
+          <span>Заявка подана. Статус будет меняться здесь, а о каждом изменении придёт уведомление.</span>
         </p>
       )}
 
@@ -48,7 +49,7 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
       {r.status === "returned" && def && (
         <section className="mt-5 rounded-2xl bg-warning/10 p-4 ring-1 ring-warning/60" aria-labelledby="ret">
           <h2 id="ret" className="flex items-center gap-2 font-semibold text-warning-foreground">
-            <MessageSquareWarning className="size-5" aria-hidden /> Методист вернул заявку
+            <MessageSquareWarning className="size-5" aria-hidden /> Заявку вернули: нужно исправить
           </h2>
           <p className="mt-1 text-sm" data-testid="return-reason">{r.returnReason}</p>
           <div className="mt-4 rounded-xl bg-card p-4">
