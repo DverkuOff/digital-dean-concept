@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getCohortRatings, getMyAttempts, getMyGrades, toResults } from "@/server/dal/grades";
 import { RatingNavigator, type DebtInfo, type OpenInfo } from "./rating-navigator";
 import { RATING_CONFIG } from "@/lib/rating/config";
+import { calcRating, placeInCohort, summarizeCohort } from "@/lib/rating/calc";
 
 export const metadata: Metadata = { title: "Рейтинг-навигатор" };
 
@@ -41,12 +42,19 @@ export default async function RatingPage() {
       }),
     }));
 
+  // Точные рейтинги однокурсников остаются на сервере (находка аудита В4):
+  // в браузер — только точное место «сейчас» и грубая гистограмма для «что если».
+  const results = toResults(grades);
+  const summary = summarizeCohort(cohort);
+  const placeNow = summary ? placeInCohort(calcRating(results, RATING_CONFIG).rating, cohort) : null;
+
   return (
     <RatingNavigator
-      results={toResults(grades)}
+      results={results}
       open={open}
       debts={debts}
-      cohort={cohort}
+      cohort={summary}
+      placeNow={placeNow}
       nowIso={now.toISOString()}
     />
   );

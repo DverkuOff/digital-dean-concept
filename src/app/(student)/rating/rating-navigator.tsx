@@ -4,8 +4,9 @@ import { useMemo, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, Check, CircleHelp, Loader2, Lock, MessagesSquare, RefreshCcw, Settings2, X } from "lucide-react";
 import {
   calcRating,
+  estimatePlace,
   evaluateThresholds,
-  placeInCohort,
+  type CohortSummary,
   requiredAverageForTarget,
   round1,
   type DisciplineResult,
@@ -27,12 +28,13 @@ export type DebtInfo = {
   ladder: { kind: string; label: string; result: string | null; score: number | null; at: string | null; room: string | null }[];
 };
 
-type Props = { results: DisciplineResult[]; open: OpenInfo[]; debts: DebtInfo[]; cohort: number[]; nowIso: string };
+type Place = { place: number; total: number; topPercent: number };
+type Props = { results: DisciplineResult[]; open: OpenInfo[]; debts: DebtInfo[]; cohort: CohortSummary | null; placeNow: Place | null; nowIso: string };
 
 const SCALE_MIN = 50;
 const pos = (v: number) => `${Math.min(100, Math.max(0, ((v - SCALE_MIN) / (100 - SCALE_MIN)) * 100))}%`;
 
-export function RatingNavigator({ results, open, debts, cohort, nowIso }: Props) {
+export function RatingNavigator({ results, open, debts, cohort, placeNow, nowIso }: Props) {
   const now = new Date(nowIso);
   const cfg = RATING_CONFIG;
   const [debtHyp, setDebtHyp] = useState<Hypothesis>(() => Object.fromEntries(debts.map((d) => [d.disciplineId, d.lastScore])));
@@ -51,10 +53,12 @@ export function RatingNavigator({ results, open, debts, cohort, nowIso }: Props)
   const shown = touched ? projected : current;
   const thresholds = evaluateThresholds(shown, cfg);
   const thresholdsNow = evaluateThresholds(current, cfg);
-  const placeNow = placeInCohort(current.rating, cohort);
-  const placeShown = placeInCohort(shown.rating, cohort);
+  // «Сейчас» — точное место с сервера; «что если» — оценка по гистограмме (обе стороны сравнения одинаково).
+  const estNow = estimatePlace(current.rating, cohort);
+  const estShown = estimatePlace(shown.rating, cohort);
+  const placeShown = touched ? estShown : placeNow;
   const delta = touched && current.rating !== null && projected.rating !== null ? round1(projected.rating - current.rating) : 0;
-  const placeDelta = placeNow && placeShown ? placeNow.place - placeShown.place : 0;
+  const placeDelta = touched && estNow && estShown ? estNow.place - estShown.place : 0;
 
   // Подсказка «сколько нужно»: ближайший недостигнутый порог при текущих долгах.
   const debtFixed: Hypothesis = {};
@@ -92,16 +96,17 @@ export function RatingNavigator({ results, open, debts, cohort, nowIso }: Props)
             <div className="text-right" data-testid="cohort-place">
               <p className="text-sm text-muted-foreground">Место на курсе</p>
               <p className="text-2xl font-semibold tabular-nums">
+                {touched && "≈ "}
                 {placeShown.place}
                 <span className="text-base font-normal text-muted-foreground"> из {placeShown.total}</span>
               </p>
               {touched && placeDelta !== 0 ? (
                 <p className={cn("text-sm font-medium", placeDelta > 0 ? "text-success-foreground" : "text-destructive")}>
-                  {placeDelta > 0 ? `↑ на ${placeDelta}` : `↓ на ${-placeDelta}`}
+                  {placeDelta > 0 ? `↑ примерно на ${placeDelta}` : `↓ примерно на ${-placeDelta}`}
                 </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">топ {placeShown.topPercent}%</p>
-              )}
+              ) : placeShown.topPercent <= 50 ? (
+                <p className="text-sm text-muted-foreground">в верхних {placeShown.topPercent}% курса</p>
+              ) : null}
             </div>
           )}
         </div>
@@ -124,7 +129,10 @@ export function RatingNavigator({ results, open, debts, cohort, nowIso }: Props)
 
         <p className="flex items-start gap-1.5 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
           <Settings2 className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          Пороги и формула — условные правила концепта, вуз настраивает их в конфиге. Место считается по рейтингам {cohort.length} однокурсников без имён и оценок.
+          Пороги и формула — условные правила концепта, вуз настраивает их в конфиге.{" "}
+          {cohort
+            ? `Место — среди ${cohort.n} однокурсников; их оценки и рейтинги вам не передаются, в режиме «что если» место примерное.`
+            : "Место на курсе не показываем: в выборке меньше 10 человек, по нему можно было бы вычислить чужие оценки."}
         </p>
       </section>
 

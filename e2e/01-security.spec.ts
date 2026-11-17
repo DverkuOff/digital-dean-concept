@@ -161,3 +161,22 @@ test("лимит входа считается по IP: перебор с одн
   expect((await other.post("/api/auth/sign-in/username", { data: { username: "sokolova", password: "demo2026" } })).status()).toBe(200);
   await other.dispose();
 });
+
+// Находка аудита В4: в браузер уходил массив точных рейтингов всех 61 однокурсника.
+// Лучшего на курсе все знают — значит, его рейтинг раскрыт. Теперь наружу — только место и грубая гистограмма.
+test("на странице рейтинга нет точных рейтингов однокурсников", async ({ browser }) => {
+  const top = await sql<{ r: string }>(`
+    select round((sum(g.final_score * d.credits) / sum(d.credits))::numeric, 1)::text as r
+    from grade g join discipline d on d.id = g.discipline_id join student s on s.id = g.student_id
+    where s.user_id is null and d.control_type in ('exam', 'diff_credit') and g.status in ('passed', 'debt')
+    group by s.id order by 1 desc limit 5`);
+  expect(top.length).toBe(5);
+  const ctx = await browser.newContext({ storageState: AUTH.b });
+  const page = await ctx.newPage();
+  const res = await page.goto("/rating");
+  const html = await res!.text(); // HTML вместе с данными для React (RSC)
+  await expect(page.getByTestId("cohort-place")).toBeVisible();
+  for (const { r } of top) expect(html, `рейтинг ${r}`).not.toContain(r);
+  expect(html).not.toMatch(/"cohort":\[/);
+  await ctx.close();
+});

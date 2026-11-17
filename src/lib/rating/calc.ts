@@ -156,3 +156,45 @@ export function requiredAverageForTarget(
 export function gradeBand(score: number, config: RatingConfig) {
   return config.bands.find((b) => score >= b.min) ?? config.bands[config.bands.length - 1];
 }
+
+/* ───────────── Место на курсе без раскрытия чужих рейтингов ───────────── */
+
+export const COHORT_BUCKET = 5; // ширина корзины гистограммы, баллов
+export const MIN_COHORT = 10; // меньше — место не показываем: по нему вычисляются чужие оценки
+
+export type CohortSummary = {
+  /** Сколько однокурсников в агрегате. */
+  n: number;
+  /** Число однокурсников в каждой корзине [0–5), [5–10)… [95–100]. Точные значения наружу не уходят. */
+  histogram: number[];
+};
+
+export function cohortHistogram(ratings: number[], width = COHORT_BUCKET): number[] {
+  const buckets = Math.ceil(100 / width);
+  const h = new Array<number>(buckets).fill(0);
+  for (const r of ratings) h[Math.min(buckets - 1, Math.max(0, Math.floor(r / width)))]++;
+  return h;
+}
+
+/** Сводка по курсу для браузера; null — выборка слишком мала, место не показываем. */
+export function summarizeCohort(ratings: number[]): CohortSummary | null {
+  if (ratings.length < MIN_COHORT) return null;
+  return { n: ratings.length, histogram: cohortHistogram(ratings) };
+}
+
+/**
+ * Оценка места по гистограмме: все из корзин выше + доля своей корзины выше меня
+ * (внутри корзины считаем распределение равномерным). Для «что если» в браузере.
+ */
+export function estimatePlace(rating: number | null, summary: CohortSummary | null, width = COHORT_BUCKET) {
+  if (rating === null || !summary) return null;
+  const h = summary.histogram;
+  const b = Math.min(h.length - 1, Math.max(0, Math.floor(rating / width)));
+  let above = 0;
+  for (let i = b + 1; i < h.length; i++) above += h[i];
+  const top = (b + 1) * width;
+  above += h[b] * Math.min(1, Math.max(0, (top - rating) / width));
+  const total = summary.n + 1;
+  const place = Math.min(total, 1 + Math.round(above));
+  return { place, total, topPercent: Math.max(1, Math.round((place / total) * 100)) };
+}

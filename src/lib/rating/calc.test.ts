@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcRating, evaluateThresholds, gradeBand, placeInCohort, requiredAverageForTarget, type DisciplineResult } from "./calc";
+import { calcRating, cohortHistogram, estimatePlace, evaluateThresholds, gradeBand, placeInCohort, requiredAverageForTarget, summarizeCohort, type DisciplineResult } from "./calc";
 import { RATING_CONFIG as cfg, type RatingConfig } from "./config";
 
 const d = (id: string, credits: number, status: DisciplineResult["status"], finalScore: number | null, extra: Partial<DisciplineResult> = {}): DisciplineResult => ({
@@ -123,5 +123,29 @@ describe("gradeBand", () => {
     expect(gradeBand(75, cfg).label).toBe("хорошо");
     expect(gradeBand(60, cfg).label).toBe("удовлетворительно");
     expect(gradeBand(10, cfg).label).toBe("неудовлетворительно");
+  });
+});
+
+describe("место на курсе без чужих рейтингов", () => {
+  const ratings = [95.4, 91, 88.2, 85, 82.5, 80, 77, 74.4, 70, 66, 61];
+  it("гистограмма считает только количество в корзинах", () => {
+    const h = cohortHistogram(ratings);
+    expect(h.reduce((a, b) => a + b, 0)).toBe(ratings.length);
+    expect(h[19]).toBe(1); // 95–100
+    expect(h[18]).toBe(1); // 90–95
+    expect(h.every((x) => Number.isInteger(x))).toBe(true);
+  });
+  it("меньше 10 однокурсников — место не показываем", () => {
+    expect(summarizeCohort(ratings.slice(0, 9))).toBeNull();
+    expect(summarizeCohort(ratings)?.n).toBe(11);
+  });
+  it("оценка по гистограмме близка к точному месту", () => {
+    const sum = summarizeCohort(ratings)!;
+    for (const r of [99, 89, 75, 68.4, 50]) {
+      const exact = placeInCohort(r, ratings)!.place;
+      expect(Math.abs(estimatePlace(r, sum)!.place - exact)).toBeLessThanOrEqual(1);
+    }
+    expect(estimatePlace(null, sum)).toBeNull();
+    expect(estimatePlace(80, null)).toBeNull();
   });
 });
