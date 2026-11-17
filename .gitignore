@@ -41,3 +41,14 @@ build/
 # Конфиги агентов, промпты и правила коммитим: жюри оценивает их (критерий «Масштаб использования нейротехнологий»).
 # Локальными остаются только личные настройки.
 .claude/settings.local.json
+
+# Next.js / тесты
+/coverage
+*.tsbuildinfo
+next-env.d.ts
+.pnp.*
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/e2e/.auth/
