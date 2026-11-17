@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { discipline, examAttempt, grade, student } from "../db/schema";
 import { requireStudent } from "../session";
@@ -81,7 +81,9 @@ export async function getCohortRatings(): Promise<number[]> {
     .from(grade)
     .innerJoin(discipline, eq(discipline.id, grade.disciplineId))
     .innerJoin(student, eq(student.id, grade.studentId))
-    .where(and(eq(student.cohort, me.cohort), ne(student.id, me.id)));
+    // Демо-персонажи и их копии (у них есть вход) в агрегат не входят: каждый видит
+    // одно и то же место среди 60 вымышленных однокурсников, копии не мешают друг другу.
+    .where(and(eq(student.cohort, me.cohort), isNull(student.userId)));
 
   const byStudent = new Map<string, DisciplineResult[]>();
   for (const r of rows) {

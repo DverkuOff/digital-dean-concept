@@ -13,9 +13,10 @@ test.describe("без входа", () => {
 
   test("неверный пароль не пускает", async ({ page }) => {
     await page.goto("/login");
+    await page.getByText("Войти по логину и паролю").click();
     await page.getByLabel("Логин").fill("sokolova");
     await page.getByLabel("Пароль").fill("wrong-password");
-    await page.getByRole("button", { name: "Войти" }).click();
+    await page.getByRole("button", { name: "Войти", exact: true }).click();
     await expect(page.locator("main [role=alert]")).toContainText("Неверный логин или пароль");
     await expect(page).toHaveURL(/\/login$/);
   });

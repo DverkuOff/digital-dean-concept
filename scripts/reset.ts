@@ -3,7 +3,7 @@
 import { sql } from "drizzle-orm";
 import { connect } from "./db";
 import { runMigrations } from "./migrate";
-import { seed, DEMO_LOGINS, DEMO_PASSWORD } from "./seed";
+import { seed, DEMO_USERNAMES, DEMO_PASSWORD } from "./seed";
 
 async function main() {
   const { pool, db } = connect();
@@ -14,7 +14,7 @@ async function main() {
     await runMigrations(db);
     const t = Date.now();
     await seed(db);
-    console.log(`Демо сброшено за ${((Date.now() - t) / 1000).toFixed(1)} с. Логины: ${Object.values(DEMO_LOGINS).join(", ")}; пароль: ${DEMO_PASSWORD}`);
+    console.log(`Демо сброшено за ${((Date.now() - t) / 1000).toFixed(1)} с. Логины: ${DEMO_USERNAMES.join(", ")}; пароль: ${DEMO_PASSWORD}`);
   } finally {
     await pool.end();
   }

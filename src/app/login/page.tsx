@@ -3,34 +3,40 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/server/session";
 import { LogoMark } from "@/components/app/logo";
 import { LoginForm } from "./login-form";
+import { QuickLogin } from "./quick-login";
 
 export const metadata: Metadata = { title: "Вход" };
 
 export default async function LoginPage() {
-  const s = await getSession();
+  // Без БД страница входа всё равно открывается (находка аудита М7): ошибку покажет сам вход.
+  let s: Awaited<ReturnType<typeof getSession>> = null;
+  try {
+    s = await getSession();
+  } catch {
+    s = null;
+  }
   if (s) redirect(s.user.role === "staff" ? "/staff" : "/today");
 
   return (
-    <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-10">
-      <div className="mb-8 flex flex-col items-center text-center">
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-8">
+      <div className="mb-6 flex flex-col items-center text-center">
         <LogoMark className="mb-4 size-14" />
         <h1 className="text-2xl font-semibold tracking-tight">Ориентир</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Расписание, оценки, рейтинг и заявки в деканат — в одном месте
         </p>
       </div>
-      <LoginForm />
-      <section className="mt-8 rounded-xl border border-dashed bg-card p-4 text-sm" aria-label="Тестовые аккаунты">
-        <p className="mb-2 font-medium">Тестовые аккаунты для жюри</p>
-        <ul className="space-y-1 text-muted-foreground">
-          <li><code className="text-foreground">sokolova</code> — студентка без долгов</li>
-          <li><code className="text-foreground">orlov</code> — студент с долгом и переносом пары</li>
-          <li><code className="text-foreground">metodist</code> — методист учебного офиса</li>
-        </ul>
-        <p className="mt-2 text-muted-foreground">
-          Пароль у всех: <code className="text-foreground">demo2026</code>
+      <QuickLogin />
+      <details className="mt-6 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+        <summary className="cursor-pointer text-sm font-medium">Войти по логину и паролю</summary>
+        <div className="mt-4">
+          <LoginForm />
+        </div>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Логины: <code>orlov</code>, <code>sokolova</code>, <code>metodist</code> и их копии <code>orlov2</code>,{" "}
+          <code>orlov3</code>… Пароль у всех: <code>demo2026</code>
         </p>
-      </section>
+      </details>
     </main>
   );
 }

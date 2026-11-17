@@ -31,7 +31,7 @@ test("новая заявка: место в очереди и срок; пос�
 
   await page.reload();
   await expect(page.getByTestId("status-badge")).toHaveText("В работе");
-  await expect(t).toContainText("Елена Белова");
+  await expect(t).toContainText("Ирина Сафонова");
   await expect(page.getByTestId("queue-position")).toHaveCount(0);
   await sctx.close();
 });

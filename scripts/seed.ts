@@ -5,13 +5,17 @@ import { hash } from "@node-rs/argon2";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as s from "../src/server/db/schema";
 import { ARGON2_OPTIONS } from "../src/server/password-opts";
-import { DAY_MS, addDays, mskAt, startOfMskDay, startOfMskWeek } from "../src/lib/dates";
+import { DAY_MS, addDays, formatDayMonth, mskAt, startOfMskDay, startOfMskWeek } from "../src/lib/dates";
 
 type DB = NodePgDatabase<typeof s>;
 
 export const DEMO_PASSWORD = "demo2026";
-const STAFF_NAME = "Елена Белова";
+const STAFF_NAME = "Ирина Сафонова";
+const STAFF_NAMES: Record<string, string> = { "": STAFF_NAME, "2": "Павел Лещинский", "3": "Наталья Гребнева" };
 export const DEMO_LOGINS = { a: "sokolova", b: "orlov", staff: "metodist" } as const;
+/** Наборы персонажей: жюри работает параллельно, у каждого свой «нетронутый» сюжет. */
+export const PERSONA_SETS = ["", "2", "3"] as const;
+export const DEMO_USERNAMES = PERSONA_SETS.flatMap((k) => [DEMO_LOGINS.b + k, DEMO_LOGINS.a + k, DEMO_LOGINS.staff + k]);
 
 // Детерминированный ГПСЧ: одинаковые однокурсники при каждом сбросе.
 function rng(seed: number) {
@@ -133,18 +137,20 @@ export async function seed(db: DB, now = new Date()) {
     await db.insert(s.account).values({ id: randomUUID(), accountId: id, providerId: "credential", userId: id, password: passwordHash });
     return id;
   }
-  const userA = await createUser(DEMO_LOGINS.a, "Анна Соколова", "student");
-  const userB = await createUser(DEMO_LOGINS.b, "Максим Орлов", "student");
-  await createUser(DEMO_LOGINS.staff, STAFF_NAME, "staff");
-
-  /* ── Студенты ── */
   const base = { faculty: FACULTY, program: PROGRAM, course: 2, cohort: COHORT, fundingType: "бюджет" };
-  const studentA = randomUUID();
-  const studentB = randomUUID();
-  await db.insert(s.student).values([
-    { id: studentA, userId: userA, lastName: "Соколова", firstName: "Анна", middleName: "Дмитриевна", groupCode: GROUP_A, recordBook: "25-МЭО-0147", ...base },
-    { id: studentB, userId: userB, lastName: "Орлов", firstName: "Максим", middleName: "Игоревич", groupCode: GROUP_B, recordBook: "25-МЭО-0392", ...base },
-  ]);
+  const sets: { key: string; studentA: string; studentB: string }[] = [];
+  for (const key of PERSONA_SETS) {
+    const userA = await createUser(DEMO_LOGINS.a + key, "Анна Соколова", "student");
+    const userB = await createUser(DEMO_LOGINS.b + key, "Максим Орлов", "student");
+    await createUser(DEMO_LOGINS.staff + key, STAFF_NAMES[key], "staff");
+    const studentA = randomUUID();
+    const studentB = randomUUID();
+    await db.insert(s.student).values([
+      { id: studentA, userId: userA, lastName: "Соколова", firstName: "Анна", middleName: "Дмитриевна", groupCode: GROUP_A, recordBook: `25-МЭО-0147${key}`, ...base },
+      { id: studentB, userId: userB, lastName: "Орлов", firstName: "Максим", middleName: "Игоревич", groupCode: GROUP_B, recordBook: `25-МЭО-0392${key}`, ...base },
+    ]);
+    sets.push({ key, studentA, studentB });
+  }
 
   /* ── Оценки демо-студентов ── */
   type G = { key: DiscKey; final?: number; status: "open" | "passed" | "debt"; slices?: [number | null, number | null, number | null]; retake?: boolean };
@@ -200,8 +206,10 @@ export async function seed(db: DB, now = new Date()) {
       })),
     );
   };
-  await insertGrades(studentA, gradesA);
-  await insertGrades(studentB, gradesB);
+  for (const set of sets) {
+    await insertGrades(set.studentA, gradesA);
+    await insertGrades(set.studentB, gradesB);
+  }
 
   /* ── ~60 вымышленных однокурсников (без входа, только для агрегата) ── */
   const groups = ["МЭО-201", "МЭО-202", "МЭО-203", "МЭО-204"];
@@ -235,14 +243,14 @@ export async function seed(db: DB, now = new Date()) {
   }
 
   /* ── Попытки сдачи: долг Орлова и расписание зимней сессии ── */
-  await db.insert(s.examAttempt).values([
+  for (const { studentB } of sets) await db.insert(s.examAttempt).values([
     { studentId: studentB, disciplineId: discId.macro, kind: "main", scheduledAt: mskAt(addDays(today, -150), 10), room: "ауд. 1012", score: 41, result: "failed" },
     { studentId: studentB, disciplineId: discId.macro, kind: "retake1", scheduledAt: mskAt(addDays(today, -55), 12, 40), room: "ауд. 2034", score: 48, result: "failed" },
     { studentId: studentB, disciplineId: discId.macro, kind: "retake2", scheduledAt: mskAt(addDays(today, 9), 11), room: "ауд. 2034", score: null, result: "scheduled" },
   ]);
   const sessionStart = addDays(today, 38);
   const sessionExams: DiscKey[] = ["ecmt", "worldec", "eng3", "prob"];
-  for (const sid of [studentA, studentB]) {
+  for (const sid of sets.flatMap((x) => [x.studentA, x.studentB])) {
     await db.insert(s.examAttempt).values(
       sessionExams.map((key, i) => ({
         studentId: sid,
@@ -363,29 +371,33 @@ export async function seed(db: DB, now = new Date()) {
   }
 
   const readyComment = "Справка готова. Электронная версия с подписью отправлена на почту, бумажную можно забрать в учебном офисе, каб. 1107, пн–пт 10:00–17:00";
-  await addRequest(studentA, "study_certificate", { purpose: "Отдел социальной защиты населения", copies: "2", format: "Бумажная в учебном офисе" }, [
-    { status: "submitted", daysAgo: 3, actor: "student" },
-    { status: "in_progress", daysAgo: 2, actor: "staff" },
-    { status: "ready", daysAgo: 0.6, actor: "staff", comment: readyComment },
-  ], { staffComment: readyComment });
-  await addRequest(studentA, "transcript", { language: "Английский", purpose: "Летняя школа по экономике" }, [
-    { status: "submitted", daysAgo: 34, actor: "student" },
-    { status: "in_progress", daysAgo: 33, actor: "staff" },
-    { status: "ready", daysAgo: 30, actor: "staff" },
-    { status: "done", daysAgo: 28, actor: "staff" },
-  ]);
-
-  const returnReason = "В заявке пропуск только 10 ноября, а справка из поликлиники — на 10–12 ноября. Исправьте дату окончания, чтобы закрыть все пропуски.";
   const d10 = addDays(today, -7);
+  const dm = (d: Date) => formatDayMonth(d);
+  const returnReason = `В заявке пропуск только ${dm(d10)}, а справка из поликлиники — с ${dm(d10)} по ${dm(addDays(d10, 2))}. Исправьте дату окончания, чтобы закрыть все пропуски.`;
   const ymd = (d: Date) => new Date(d.getTime() + 3 * 3600 * 1000).toISOString().slice(0, 10);
-  await addRequest(studentB, "absence_excuse", { dateFrom: ymd(d10), dateTo: ymd(d10), reason: "Болезнь", comment: "Пропустил эконометрику и французский" }, [
-    { status: "submitted", daysAgo: 4, actor: "student" },
-    { status: "returned", daysAgo: 1, actor: "staff", comment: returnReason },
-  ], { returnReason, returnField: "dateTo" });
-  await addRequest(studentB, "military_certificate", { commissariat: "Военный комиссариат Гагаринского района", format: "Бумажная в учебном офисе" }, [
-    { status: "submitted", daysAgo: 2, actor: "student" },
-    { status: "in_progress", daysAgo: 1, actor: "staff" },
-  ]);
+  for (const { key, studentA, studentB } of sets) {
+    const who = { assigneeName: STAFF_NAMES[key] };
+    await addRequest(studentA, "study_certificate", { purpose: "Отдел социальной защиты населения", copies: "2", format: "Бумажная в учебном офисе" }, [
+      { status: "submitted", daysAgo: 3, actor: "student" },
+      { status: "in_progress", daysAgo: 2, actor: "staff" },
+      { status: "ready", daysAgo: 0.6, actor: "staff", comment: readyComment },
+    ], { staffComment: readyComment, ...who });
+    await addRequest(studentA, "transcript", { language: "Английский", purpose: "Летняя школа по экономике" }, [
+      { status: "submitted", daysAgo: 34, actor: "student" },
+      { status: "in_progress", daysAgo: 33, actor: "staff" },
+      { status: "ready", daysAgo: 30, actor: "staff" },
+      { status: "done", daysAgo: 28, actor: "staff" },
+    ], who);
+
+    await addRequest(studentB, "absence_excuse", { dateFrom: ymd(d10), dateTo: ymd(d10), reason: "Болезнь", comment: "Пропустил эконометрику и французский" }, [
+      { status: "submitted", daysAgo: 4, actor: "student" },
+      { status: "returned", daysAgo: 1, actor: "staff", comment: returnReason },
+    ], { returnReason, returnField: "dateTo", ...who });
+    await addRequest(studentB, "military_certificate", { commissariat: "Военный комиссариат Гагаринского района", format: "Бумажная в учебном офисе" }, [
+      { status: "submitted", daysAgo: 2, actor: "student" },
+      { status: "in_progress", daysAgo: 1, actor: "staff" },
+    ], who);
+  }
 
   // Заявки однокурсников — для живой очереди методиста.
   const others = await db.query.student.findMany({ where: (t, { isNull }) => isNull(t.userId), limit: 5 });
@@ -406,17 +418,19 @@ export async function seed(db: DB, now = new Date()) {
 
   /* ── Уведомления ── */
   const n = (studentId: string, v: Omit<typeof s.notification.$inferInsert, "studentId">) => ({ studentId, ...v });
-  await db.insert(s.notification).values([
-    n(studentA, { kind: "request", title: "Готово: Справка об обучении", body: readyComment, link: "/requests", createdAt: addDays(now, -0.6) }),
-    n(studentA, { kind: "deadline", title: "Выбор темы курсовой работы", body: "Согласуйте тему с научным руководителем и отметьте её в кабинете.", dueAt: mskAt(addDays(today, 8), 18), createdAt: addDays(now, -2) }),
-    n(studentA, { kind: "schedule", title: "Смена аудитории", body: "Семинар пройдёт в ауд. 1107: аудитория занята под олимпиаду.", link: "/schedule", createdAt: addDays(now, -0.8) }),
-    n(studentA, { kind: "grade", title: "Выставлены баллы за 2-й срез", body: "Эконометрика: 88 из 100.", link: "/grades", createdAt: addDays(now, -6), readAt: addDays(now, -5) }),
-    n(studentB, { kind: "schedule", title: "Перенос семинара по эконометрике", body: "Преподаватель на конференции, семинар перенесён на вечер.", link: "/schedule", createdAt: new Date(now.getTime() - 2 * 3600 * 1000) }),
-    n(studentB, { kind: "retake", title: "Пересдача 2: Макроэкономика", body: "Пересдача назначена, ауд. 2034. Это последняя попытка перед комиссией.", link: "/rating", dueAt: mskAt(addDays(today, 9), 11), createdAt: addDays(now, -3) }),
-    n(studentB, { kind: "request", title: "Нужны уточнения: Пропуск по уважительной причине", body: returnReason, link: "/requests", createdAt: addDays(now, -1) }),
-    n(studentB, { kind: "deadline", title: "Заявление на пересдачу", body: "Подайте заявление на пересдачу по макроэкономике, чтобы попасть в ведомость.", link: "/requests/new?type=retake_application", dueAt: mskAt(addDays(today, 5), 18), createdAt: addDays(now, -3) }),
-    n(studentB, { kind: "deadline", title: "Выбор темы курсовой работы", body: "Согласуйте тему с научным руководителем и отметьте её в кабинете.", dueAt: mskAt(addDays(today, 8), 18), createdAt: addDays(now, -2), readAt: addDays(now, -1) }),
-  ]);
+  for (const { studentA, studentB } of sets) {
+    await db.insert(s.notification).values([
+      n(studentA, { kind: "request", title: "Готово: Справка об обучении", body: readyComment, link: "/requests", createdAt: addDays(now, -0.6) }),
+      n(studentA, { kind: "deadline", title: "Выбор темы курсовой работы", body: "Согласуйте тему с научным руководителем и отметьте её в кабинете.", dueAt: mskAt(addDays(today, 8), 18), createdAt: addDays(now, -2) }),
+      n(studentA, { kind: "schedule", title: "Смена аудитории", body: "Семинар пройдёт в ауд. 1107: аудитория занята под олимпиаду.", link: "/schedule", createdAt: addDays(now, -0.8) }),
+      n(studentA, { kind: "grade", title: "Выставлены баллы за 2-й срез", body: "Эконометрика: 88 из 100.", link: "/grades", createdAt: addDays(now, -6), readAt: addDays(now, -5) }),
+      n(studentB, { kind: "schedule", title: "Перенос семинара по эконометрике", body: "Преподаватель на конференции, семинар перенесён на вечер.", link: "/schedule", createdAt: new Date(now.getTime() - 2 * 3600 * 1000) }),
+      n(studentB, { kind: "retake", title: "Пересдача 2: Макроэкономика", body: "Пересдача назначена, ауд. 2034. Это последняя попытка перед комиссией.", link: "/rating", dueAt: mskAt(addDays(today, 9), 11), createdAt: addDays(now, -3) }),
+      n(studentB, { kind: "request", title: "Нужны уточнения: Пропуск по уважительной причине", body: returnReason, link: "/requests", createdAt: addDays(now, -1) }),
+      n(studentB, { kind: "deadline", title: "Заявление на пересдачу", body: "Подайте заявление на пересдачу по макроэкономике, чтобы попасть в ведомость.", link: "/requests/new?type=retake_application", dueAt: mskAt(addDays(today, 5), 18), createdAt: addDays(now, -3) }),
+      n(studentB, { kind: "deadline", title: "Выбор темы курсовой работы", body: "Согласуйте тему с научным руководителем и отметьте её в кабинете.", dueAt: mskAt(addDays(today, 8), 18), createdAt: addDays(now, -2), readAt: addDays(now, -1) }),
+    ]);
+  }
 
   await db.insert(s.news).values([
     { title: "Опубликовано расписание зимней сессии", body: "Экзамены начнутся через пять недель. Расписание уже в разделе «Учёба» и в календаре.", important: true, publishedAt: addDays(now, -1) },
@@ -425,5 +439,5 @@ export async function seed(db: DB, now = new Date()) {
     { title: "Стипендиальная комиссия", body: "Комиссия рассмотрит заявления на повышенную стипендию после зимней сессии. Следите за рейтингом.", faculty: FACULTY, publishedAt: addDays(now, -9) },
   ]);
 
-  return { studentA, studentB };
+  return { studentA: sets[0].studentA, studentB: sets[0].studentB };
 }

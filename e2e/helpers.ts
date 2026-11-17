@@ -29,7 +29,8 @@ export async function requestIdOf(lastName: string, type: string) {
 
 export async function login(page: Page, username: string, password = "demo2026") {
   await page.goto("/login");
+  await page.getByText("Войти по логину и паролю").click();
   await page.getByLabel("Логин").fill(username);
   await page.getByLabel("Пароль").fill(password);
-  await page.getByRole("button", { name: "Войти" }).click();
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
 }
