@@ -50,3 +50,9 @@ Better Auth `username()` + `disableSignUp`. Аккаунты создаёт си
 ## 2026-11-17 · Решение: деплой одним Docker-образом, миграции и сид при старте
 Next.js `output: "standalone"` + `node:24-slim` (glibc: у `@node-rs/argon2` готовый бинарник, без компиляции). Скрипт старта собирается esbuild в один `dist/start-seed.cjs`: применяет миграции и создаёт демо, если база пустая; при `DEMO_RESET_ON_START=1` сбрасывает демо при каждом старте, чтобы даты были свежими к показу. Порт 3000, процесс не от root. Проверено локально: образ 440 МБ, на пустой базе демо создаётся, при перезапуске данные не пересоздаются, `node dist/reset.cjs` в контейнере сбрасывает демо, вход и 404 для студента на `/staff` работают.
 Не деплоили: нет аккаунта Amvera (нужен человек: регистрация, оплата, managed PostgreSQL).
+
+## 2026-11-17 · Сложность: два алерта Dependabot в транзитивных зависимостях
+- `minimatch@10.2.6` (DoS через шаблоны, исправлено в 11.0.1) приходил через `shadcn` → `ts-morph`. Причём `shadcn init` записал CLI в `dependencies`, хотя в рантайме нужен только его CSS при сборке.
+- `esbuild@0.18.20` (dev-сервер отвечает любому сайту, исправлено в 0.25.0) приходил через `drizzle-kit` → `@esbuild-kit/core-utils`.
+Как решили: `shadcn` перенесли в `devDependencies`, добавили точечные `overrides` (`@ts-morph/common → minimatch ^11.0.1`, `@esbuild-kit/core-utils → esbuild ^0.25.0`). `npm audit`: 0 уязвимостей. Проверили, что `drizzle-kit generate` и `shadcn` CLI работают, сборка, 24 юнит- и 44 e2e-теста зелёные.
+Попутно второй раз наступили на баг npm с необязательными бинарниками (npm/cli#4828): инкрементальный `npm install` выкинул `@rolldown/binding-darwin-arm64` из lock-файла. Правило: после изменения зависимостей — чистая установка (`rm -rf node_modules package-lock.json && npm install`) и `npx vitest run`.
