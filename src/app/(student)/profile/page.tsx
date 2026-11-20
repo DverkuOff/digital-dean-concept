@@ -64,7 +64,7 @@ export default async function ProfilePage() {
       </section>
 
       <details className="mt-4 rounded-2xl bg-secondary/60 p-4 text-sm text-secondary-foreground">
-        <summary className="flex cursor-pointer items-center gap-2 font-medium">
+        <summary className="-my-2 flex min-h-10 cursor-pointer items-center gap-2 font-medium">
           <ShieldCheck className="size-5 shrink-0" aria-hidden /> Как защищены мои данные
         </summary>
         <p className="mt-2">

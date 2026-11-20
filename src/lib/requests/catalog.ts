@@ -14,6 +14,7 @@ export type RequestTypeDef = {
   description: string;
   eta: string; // ориентировочный срок
   typicalDays: number; // обычно готовят за N рабочих дней (по данным очереди; в концепте — условно)
+  typicalVerb?: string; // «готовят» (по умолчанию) / «отвечают» / «рассматривают»
   icon: "file" | "shield" | "calendar" | "languages" | "refresh" | "messages";
   fields: FieldDef[];
   note?: string;
@@ -56,6 +57,7 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
   {
     key: "absence_excuse",
     typicalDays: 2,
+    typicalVerb: "рассматривают",
     title: "Уважительная причина пропуска",
     description: "Закрыть пропуски и сохранить допуск к сессии.",
     eta: "до 3 рабочих дней",
@@ -89,6 +91,7 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
   {
     key: "retake_application",
     typicalDays: 1,
+    typicalVerb: "рассматривают",
     title: "Заявление на пересдачу",
     description: "Записаться на пересдачу или попросить индивидуальный график сдачи.",
     eta: "до 2 рабочих дней",
@@ -108,6 +111,7 @@ export const REQUEST_TYPES: RequestTypeDef[] = [
   {
     key: "consultation",
     typicalDays: 1,
+    typicalVerb: "отвечают",
     title: "Консультация перед пересдачей",
     description: "Запись на консультацию к преподавателю через учебный офис.",
     eta: "ответ в течение 1 рабочего дня",

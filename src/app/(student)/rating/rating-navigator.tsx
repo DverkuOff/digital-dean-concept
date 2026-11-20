@@ -190,7 +190,7 @@ export function RatingNavigator({ results, open, debts, cohort, placeNow, nowIso
               <h2 id="ses" className="text-[15px] font-semibold">Что если: зимняя сессия</h2>
               <p className="text-sm text-muted-foreground">{withSession ? "Ползунки стоят на среднем по срезам — подвиньте" : "Отметьте «учесть», чтобы прикинуть оценки за сессию"}</p>
             </div>
-            <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm font-medium">
+            <label className="press -my-2 -mr-2 flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-lg px-2 text-sm font-medium hover:bg-muted">
               <input type="checkbox" className="size-5 accent-[var(--primary)]" checked={withSession} onChange={(e) => setWithSession(e.target.checked)} />
               учесть
             </label>
@@ -242,7 +242,7 @@ export function RatingNavigator({ results, open, debts, cohort, placeNow, nowIso
       )}
 
       <details className="rounded-2xl bg-card p-4 text-sm ring-1 ring-foreground/10">
-        <summary className="flex cursor-pointer items-center gap-2 font-medium">
+        <summary className="-my-2 flex min-h-10 cursor-pointer items-center gap-2 font-medium">
           <CircleHelp className="size-4" aria-hidden /> Как считается рейтинг
         </summary>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-muted-foreground">

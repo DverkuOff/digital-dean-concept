@@ -44,6 +44,9 @@ export default async function TodayPage() {
   const rating = calcRating(toResults(grades), RATING_CONFIG);
   const thresholds = evaluateThresholds(rating, RATING_CONFIG);
   const nextGoal = thresholds.find((t) => !t.reached);
+  // Новость, которая уже стоит карточкой «Сегодня», в «Деканат сообщает» не повторяем.
+  const shownAsCard = new Set(cards.filter((c) => c.kind === "news").map((c) => c.key.slice("news:".length)));
+  const newsList = news.filter((n) => !shownAsCard.has(n.id));
 
   return (
     <>
@@ -64,7 +67,7 @@ export default async function TodayPage() {
         )}
       </section>
 
-      <SectionTitle action={<Link href="/schedule" className="text-sm font-medium text-primary">Вся неделя</Link>}>
+      <SectionTitle action={<Link href="/schedule" className="press -my-2 -mr-2 inline-flex min-h-10 items-center rounded-lg px-2 text-sm font-medium text-primary hover:bg-accent">Вся неделя</Link>}>
         {left.length ? (passedToday ? "Ещё сегодня" : "Пары сегодня") : next ? `Ближайшие пары: ${formatWeekday(next.startsAt)}` : "Пары"}
       </SectionTitle>
       {left.length || nextDayLessons.length ? (
@@ -98,11 +101,11 @@ export default async function TodayPage() {
         <ArrowRight className="size-5 shrink-0" aria-hidden />
       </Link>
 
-      {news.length > 0 && (
+      {newsList.length > 0 && (
         <>
-          <SectionTitle action={<Link href="/notifications?tab=news" className="text-sm font-medium text-primary">Все новости</Link>}>Деканат сообщает</SectionTitle>
+          <SectionTitle action={<Link href="/notifications?tab=news" className="press -my-2 -mr-2 inline-flex min-h-10 items-center rounded-lg px-2 text-sm font-medium text-primary hover:bg-accent">Все новости</Link>}>Деканат сообщает</SectionTitle>
           <ul className="space-y-2">
-            {news.slice(0, 2).map((n) => (
+            {newsList.slice(0, 2).map((n) => (
               <li key={n.id} className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Megaphone className="size-3.5" aria-hidden /> {formatDayMonth(n.publishedAt)}

@@ -43,7 +43,9 @@ export function RequestTransparency({ def, status, createdAt, assigneeName, queu
         )}
       </Row>
       <Row icon={Clock} label="Обычный срок">
-        Обычно готовят за {days}, по регламенту — {def.eta}
+        Обычно {def.typicalVerb ?? "готовят"} за {days}
+        {/* Регламент — только если он отличается от обычного срока («1 рабочий день» и «в течение 1 рабочего дня» — одно и то же). */}
+        {Number(/\d+/.exec(def.eta)?.[0]) !== def.typicalDays && `, по регламенту — ${def.eta}`}
         {active && (
           <span className={cn("block", late ? "font-medium text-warning-foreground" : "text-muted-foreground")}>
             {late ? `Дольше обычного: ждали к ${formatDayMonth(due)}` : `Примерно к ${formatDayMonth(due)}`}
