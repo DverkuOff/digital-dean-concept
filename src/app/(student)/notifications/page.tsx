@@ -6,8 +6,9 @@ import { markAllReadAction } from "@/server/actions/student";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { SubmitButton } from "@/components/app/submit-button";
-import { formatDateTime, formatDayMonth, relativeDay } from "@/lib/dates";
+import { formatDateTime, formatDayMonth, formatTime, relativeDay } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { SegmentedTabs } from "@/components/app/segmented-tabs";
 
 export const metadata: Metadata = { title: "Уведомления" };
 
@@ -42,19 +43,14 @@ export default async function NotificationsPage({ searchParams }: { searchParams
           ) : undefined
         }
       />
-      <div className="relative mb-4 grid grid-cols-2 rounded-xl bg-muted p-1 text-sm font-medium" role="tablist">
-        <span
-          aria-hidden
-          className="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-lg bg-card shadow-sm ring-1 ring-foreground/10 transition-transform duration-250 ease-(--ease-in-out) dark:bg-foreground/15"
-          style={{ transform: isNews ? "translateX(100%)" : "none" }}
-        />
-        <Link role="tab" aria-selected={!isNews} href="/notifications" className={cn("press relative rounded-lg py-2 text-center transition-colors", !isNews ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
-          Мне {unread > 0 && <span className="ml-1 rounded-full bg-destructive px-1.5 text-[11px] text-white">{unread}</span>}
-        </Link>
-        <Link role="tab" aria-selected={isNews} href="/notifications?tab=news" className={cn("press relative rounded-lg py-2 text-center transition-colors", isNews ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
-          Новости деканата
-        </Link>
-      </div>
+      <SegmentedTabs
+        label="Уведомления и новости"
+        active={isNews ? "news" : "mine"}
+        items={[
+          { key: "mine", href: "/notifications", label: <>Мне {unread > 0 && <span className="ml-1 rounded-full bg-destructive px-1.5 text-[11px] text-white">{unread}</span>}</> },
+          { key: "news", href: "/notifications?tab=news", label: "Новости деканата" },
+        ]}
+      />
 
       {isNews ? (
         news.length ? (
@@ -87,7 +83,13 @@ export default async function NotificationsPage({ searchParams }: { searchParams
                 <p className="mt-1 text-sm text-muted-foreground">{n.body}</p>
                 {n.dueAt && (
                   <p className={cn("mt-2 inline-flex rounded-lg px-2 py-1 text-xs font-medium", n.dueAt > now ? "bg-warning/20 text-warning-foreground" : "bg-muted text-muted-foreground")}>
-                    {n.dueAt > now ? `Срок ${relativeDay(n.dueAt, now)}, ${formatDayMonth(n.dueAt)}` : "Срок прошёл"}
+                    {n.kind === "retake"
+                      ? n.dueAt > now
+                        ? `Пересдача ${relativeDay(n.dueAt, now)}: ${formatDayMonth(n.dueAt)}, ${formatTime(n.dueAt)}`
+                        : "Дата пересдачи прошла"
+                      : n.dueAt > now
+                        ? `Срок ${relativeDay(n.dueAt, now)}, ${formatDayMonth(n.dueAt)}`
+                        : "Срок прошёл"}
                   </p>
                 )}
               </>

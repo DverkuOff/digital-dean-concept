@@ -96,3 +96,71 @@ test("месяц правдоподобен: прошлый месяц с пар
   expect(new Set(notes.map((n) => n.split(":")[0])).size, "изменения по разным дисциплинам").toBeGreaterThanOrEqual(3);
   await ctx.close();
 });
+
+// ПМИ-2 (Н-1): месяц обещает «перейти на день» — в дне пересдачи и экзамена они видны, а не «пар нет, можно выдохнуть».
+test("день пересдачи и экзамена из месяца: карточка видна в дне и в неделе", async ({ browser }) => {
+  const ctx = await browser.newContext({ storageState: AUTH.b, viewport: { width: 360, height: 800 } });
+  const page = await ctx.newPage();
+  for (const m of [0, 1]) {
+    await page.goto(`/schedule?view=month&m=${m}`);
+    if (await page.locator('[data-testid="month-day"][data-exam="retake"]').count()) break;
+  }
+  await page.locator('[data-testid="month-day"][data-exam="retake"]').click();
+  await expect(page).toHaveURL(/\/schedule\?d=\d{4}-\d{2}-\d{2}$/);
+  const retake = page.locator('[data-testid="exam-card"][data-kind="retake"]');
+  await expect(retake).toContainText("Макроэкономика");
+  await expect(retake).toContainText("11:00");
+  await expect(retake.getByRole("link", { name: /План пересдачи/ })).toHaveAttribute("href", "/rating");
+  await expect(page.getByText("Можно выдохнуть")).toHaveCount(0);
+  // Вкладка «Неделя» из выбранного дня — неделя этого дня, и пересдача там тоже есть.
+  await page.getByRole("tab", { name: "Неделя" }).click();
+  await expect(page).toHaveURL(/view=week&w=\d/);
+  await expect(page.locator('[data-testid="exam-card"][data-kind="retake"]')).toBeVisible();
+
+  // Первый экзамен сессии: в дне без пар — карточка экзамена и свой текст вместо «можно выдохнуть».
+  let found = false;
+  for (const m of [1, 2]) {
+    await page.goto(`/schedule?view=month&m=${m}`);
+    const exam = page.locator('[data-testid="month-day"][data-exam="exam"]');
+    if (await exam.count()) {
+      await exam.first().click();
+      found = true;
+      break;
+    }
+  }
+  expect(found).toBe(true);
+  await expect(page.locator('[data-testid="exam-card"][data-kind="exam"]')).toBeVisible();
+  await expect(page.getByText("Можно выдохнуть")).toHaveCount(0);
+  await ctx.close();
+});
+
+// ПМИ-2 (Н-8): крайние даты не роняют страницу.
+test("крайние ?d= и ?w= не дают экран ошибки", async ({ browser }) => {
+  const ctx = await browser.newContext({ storageState: AUTH.b });
+  const page = await ctx.newPage();
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  for (const q of ["d=9999-12-31", "d=0001-01-01", "view=week&w=99999", "d=2026-02-31"]) {
+    await page.goto(`/schedule?${q}`);
+    await expect(page.getByRole("heading", { name: "Расписание" })).toBeVisible();
+    await expect(page.getByText("Не получилось загрузить")).toHaveCount(0);
+  }
+  expect(errors).toEqual([]);
+  await ctx.close();
+});
+
+// ПМИ-2 (Н-11): подложка переключателя вида переезжает сразу по нажатию, не дожидаясь сервера.
+test("переключатель вида отзывается сразу, даже если сервер отвечает медленно", async ({ browser }) => {
+  const ctx = await browser.newContext({ storageState: AUTH.b });
+  const page = await ctx.newPage();
+  await page.goto("/schedule");
+  await page.route(/\/schedule\?view=month/, async (route) => {
+    await new Promise((r) => setTimeout(r, 2000));
+    await route.continue();
+  });
+  await page.getByRole("tab", { name: "Месяц" }).click();
+  await expect(page.getByRole("tab", { name: "Месяц" })).toHaveAttribute("aria-selected", "true", { timeout: 500 });
+  await expect(page).toHaveURL(/view=month/, { timeout: 10_000 });
+  await expect(page.getByTestId("month-grid")).toBeVisible();
+  await ctx.close();
+});

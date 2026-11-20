@@ -3,21 +3,14 @@ import Link from "next/link";
 import { CalendarCheck2, CalendarPlus, ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
 import { getMyLessons, type LessonView } from "@/server/dal/schedule";
 import { getMyAttempts, getMyGrades } from "@/server/dal/grades";
-import { MONTH_MAX, MONTH_MIN, MonthView, type MonthExam } from "./month-view";
+import { MonthView } from "./month-view";
 import { PageHeader } from "@/components/app/page-header";
 import { LessonCard } from "@/components/app/lesson-card";
+import { ExamCard, examLabel, type ExamView } from "@/components/app/exam-card";
 import { EmptyState } from "@/components/app/empty-state";
-import {
-  addDays,
-  formatDayMonth,
-  formatDayRange,
-  formatShortWeekday,
-  formatWeekday,
-  mskDateKey,
-  startOfMskDay,
-  startOfMskMonth,
-  startOfMskWeek,
-} from "@/lib/dates";
+import { SegmentedTabs } from "@/components/app/segmented-tabs";
+import { addDays, formatDayMonth, formatDayRange, formatShortWeekday, formatWeekday, mskDateKey, startOfMskMonth, startOfMskWeek } from "@/lib/dates";
+import { changesTitle, parseSchedule, scheduleTabs } from "@/lib/schedule/nav";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Расписание" };
@@ -25,30 +18,26 @@ export const metadata: Metadata = { title: "Расписание" };
 type SP = Promise<{ view?: string; d?: string; w?: string; m?: string }>;
 
 export default async function SchedulePage({ searchParams }: { searchParams: SP }) {
-  const sp = await searchParams;
   const now = new Date();
-  const view = sp.view === "week" ? "week" : sp.view === "month" ? "month" : "day";
-
-  // Выбранный день (?d=YYYY-MM-DD) или сегодня; неделя (?w=смещение) — относительно текущей.
-  const parsed = sp.d && /^\d{4}-\d{2}-\d{2}$/.test(sp.d) ? new Date(`${sp.d}T12:00:00+03:00`) : null;
-  const day = startOfMskDay(parsed && !Number.isNaN(parsed.getTime()) ? parsed : now);
-  const weekOffset = Math.max(-2, Math.min(6, Number.parseInt(sp.w ?? "0", 10) || 0));
-  const weekStart = view === "week" ? addDays(startOfMskWeek(now), weekOffset * 7) : startOfMskWeek(day);
-  const monthOffset = Math.max(MONTH_MIN, Math.min(MONTH_MAX, Number.parseInt(sp.m ?? "0", 10) || 0));
-  const monthStart = startOfMskMonth(now, monthOffset);
+  // Выбранный день (?d=), неделя (?w=) и месяц (?m=) — смещения от текущих, крайние значения зажаты (nav.ts).
+  const st = parseSchedule(await searchParams, now);
+  const { view, day, weekStart, monthStart } = st;
+  const tabs = scheduleTabs(st, now);
   const monthGridStart = startOfMskWeek(monthStart);
-  const monthGridEnd = addDays(startOfMskWeek(startOfMskMonth(now, monthOffset + 1)), 7);
-  const lessons =
-    view === "month" ? await getMyLessons(monthGridStart, monthGridEnd) : await getMyLessons(weekStart, addDays(weekStart, 7));
+  const monthGridEnd = addDays(startOfMskWeek(startOfMskMonth(monthStart, 1)), 7);
+  const [lessons, attempts, grades] = await Promise.all([
+    view === "month" ? getMyLessons(monthGridStart, monthGridEnd) : getMyLessons(weekStart, addDays(weekStart, 7)),
+    getMyAttempts(),
+    getMyGrades(),
+  ]);
 
-  let exams: MonthExam[] = [];
-  if (view === "month") {
-    const [attempts, grades] = await Promise.all([getMyAttempts(), getMyGrades()]);
-    const nameOf = (id: string) => grades.find((g) => g.disciplineId === id)?.name ?? "экзамен";
-    exams = attempts
-      .filter((a) => a.result === "scheduled" && a.scheduledAt)
-      .map((a) => ({ id: a.id, at: a.scheduledAt!, name: nameOf(a.disciplineId), room: a.room, retake: a.kind !== "main" }));
-  }
+  // Экзамены и пересдачи — во всех видах: в день экзамена не должно быть «пар нет, можно выдохнуть».
+  const nameOf = (id: string) => grades.find((g) => g.disciplineId === id)?.name ?? "экзамен";
+  const exams: ExamView[] = attempts
+    .filter((a) => a.result === "scheduled" && a.scheduledAt)
+    .map((a) => ({ id: a.id, at: a.scheduledAt!, name: nameOf(a.disciplineId), room: a.room, retake: a.kind !== "main", label: examLabel(a.kind) }));
+  const examsBy = new Map<string, ExamView[]>();
+  for (const e of exams) examsBy.set(mskDateKey(e.at), [...(examsBy.get(mskDateKey(e.at)) ?? []), e]);
 
   const byDay = new Map<string, LessonView[]>();
   for (const l of lessons) {
@@ -57,61 +46,58 @@ export default async function SchedulePage({ searchParams }: { searchParams: SP 
   }
   const changes = view === "month" ? [] : lessons.filter((l) => l.status !== "normal");
   const todayKey = mskDateKey(now);
-  const days = Array.from({ length: 6 }, (_, i) => addDays(weekStart, i));
-  const curOffset = Math.round((weekStart.getTime() - startOfMskWeek(now).getTime()) / (7 * 86400000));
+  const dayKey = mskDateKey(day);
+  // Пн–Сб; воскресенье — только если его выбрали (клик по клетке месяца).
+  const days = Array.from({ length: view === "day" && formatShortWeekday(day) === "вс" ? 7 : 6 }, (_, i) => addDays(weekStart, i));
+  const curOffset = st.weekOffset;
 
   return (
     <>
       <PageHeader title="Расписание" description={view === "month" ? "Месяц: пары, изменения и сессия" : formatDayRange(weekStart, addDays(weekStart, 5))} />
 
-      <div className="relative mb-4 grid grid-cols-3 rounded-xl bg-muted p-1 text-sm font-medium" role="tablist">
-        {/* Подложка одна и та же при смене вида (страница не перемонтируется) — поэтому она плавно переезжает. */}
-        <span
-          aria-hidden
-          className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-lg bg-card shadow-sm ring-1 ring-foreground/10 transition-transform duration-250 ease-(--ease-in-out) dark:bg-foreground/15"
-          style={{ transform: `translateX(${view === "day" ? 0 : view === "week" ? 100 : 200}%)` }}
-        />
-        <Link role="tab" aria-selected={view === "day"} href="/schedule" className={cn("press relative rounded-lg py-2 text-center transition-colors", view === "day" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
-          День
-        </Link>
-        <Link role="tab" aria-selected={view === "week"} href="/schedule?view=week" className={cn("press relative rounded-lg py-2 text-center transition-colors", view === "week" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
-          Неделя
-        </Link>
-        <Link role="tab" aria-selected={view === "month"} href="/schedule?view=month" className={cn("press relative rounded-lg py-2 text-center transition-colors", view === "month" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
-          Месяц
-        </Link>
-      </div>
+      <SegmentedTabs
+        label="Вид расписания"
+        active={view}
+        items={[
+          { key: "day", href: tabs.day, label: "День" },
+          { key: "week", href: tabs.week, label: "Неделя" },
+          { key: "month", href: tabs.month, label: "Месяц" },
+        ]}
+      />
 
       {changes.length > 0 && (
         <div className="mb-4 flex items-start gap-2 rounded-xl bg-warning/15 p-3 text-sm text-warning-foreground ring-1 ring-warning/50" data-testid="changes-summary">
           <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           <p>
-            <span className="font-semibold">Изменения на этой неделе: {changes.length}.</span>{" "}
+            <span className="font-semibold">
+              Изменения {changesTitle(weekStart, now)}: {changes.length}.
+            </span>{" "}
             {changes
               .slice(0, 3)
-              .map((c) => `${c.discipline} (${formatShortWeekday(c.startsAt)})`)
-              .join(", ")}
+              .map((c) => `${c.discipline}, ${formatShortWeekday(c.startsAt)}`)
+              .join("; ")}
             {changes.length > 3 && ` и ещё ${changes.length - 3}`}
           </p>
         </div>
       )}
 
       {view === "month" ? (
-        <MonthView monthStart={monthStart} offset={monthOffset} lessons={lessons} exams={exams} now={now} />
+        <MonthView monthStart={monthStart} offset={st.monthOffset} lessons={lessons} exams={exams} now={now} />
       ) : view === "day" ? (
         <>
           <div className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 py-1" aria-label="Дни недели">
             {days.map((d) => {
               const k = mskDateKey(d);
-              const active = k === mskDateKey(day);
+              const active = k === dayKey;
               const hasChange = (byDay.get(k) ?? []).some((l) => l.status !== "normal");
+              const dayExams = examsBy.get(k) ?? [];
               return (
                 <Link
                   key={k}
                   href={`/schedule?d=${k}`}
                   aria-current={active ? "date" : undefined}
                   className={cn(
-                    "press relative flex min-w-13 flex-1 flex-col items-center rounded-xl px-2 py-2 text-sm ring-1 ring-foreground/10 ring-inset",
+                    "press relative flex min-w-10 flex-1 flex-col items-center rounded-xl px-1 py-2 text-sm ring-1 ring-foreground/10 ring-inset",
                     active ? "bg-primary text-primary-foreground ring-primary" : "bg-card hover:bg-muted",
                     k === todayKey && !active && "ring-2 ring-primary/60",
                   )}
@@ -119,34 +105,40 @@ export default async function SchedulePage({ searchParams }: { searchParams: SP 
                   <span className="text-[11px] uppercase opacity-80">{formatShortWeekday(d)}</span>
                   <span className="text-base font-semibold">{formatDayMonth(d).split(" ")[0]}</span>
                   {hasChange && <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-warning" aria-label="есть изменения" />}
+                  {dayExams.length > 0 && (
+                    <span
+                      className={cn("absolute left-1.5 top-1.5 size-2 rounded-full", dayExams.some((e) => e.retake) ? "bg-destructive" : "bg-primary", active && "ring-1 ring-primary-foreground")}
+                      aria-label={dayExams.some((e) => e.retake) ? "пересдача" : "экзамен"}
+                    />
+                  )}
                 </Link>
               );
             })}
           </div>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold first-letter:uppercase">
-              {mskDateKey(day) === todayKey ? "Сегодня, " : ""}
+              {dayKey === todayKey ? "Сегодня, " : ""}
               {formatWeekday(day)}, {formatDayMonth(day)}
             </h2>
             <div className="flex gap-1">
-              <Link href={`/schedule?d=${mskDateKey(addDays(day, -7))}`} className="grid size-9 place-items-center rounded-lg hover:bg-muted" aria-label="Неделя назад">
+              <Link href={`/schedule?d=${mskDateKey(addDays(day, -7))}`} className="grid size-10 place-items-center rounded-lg hover:bg-muted" aria-label="Неделя назад">
                 <ChevronLeft className="size-4" />
               </Link>
-              <Link href={`/schedule?d=${mskDateKey(addDays(day, 7))}`} className="grid size-9 place-items-center rounded-lg hover:bg-muted" aria-label="Неделя вперёд">
+              <Link href={`/schedule?d=${mskDateKey(addDays(day, 7))}`} className="grid size-10 place-items-center rounded-lg hover:bg-muted" aria-label="Неделя вперёд">
                 <ChevronRight className="size-4" />
               </Link>
             </div>
           </div>
-          <DayList lessons={byDay.get(mskDateKey(day)) ?? []} now={now} />
+          <DayList lessons={byDay.get(dayKey) ?? []} exams={examsBy.get(dayKey) ?? []} now={now} />
         </>
       ) : (
         <>
           <div className="mb-3 flex items-center justify-between">
-            <Link href={`/schedule?view=week&w=${curOffset - 1}`} className="inline-flex h-9 items-center gap-1 rounded-lg px-2 text-sm hover:bg-muted">
+            <Link href={`/schedule?view=week&w=${curOffset - 1}`} className="inline-flex h-10 items-center gap-1 rounded-lg px-2 text-sm hover:bg-muted">
               <ChevronLeft className="size-4" /> Пред.
             </Link>
             <span className="text-sm font-medium">{curOffset === 0 ? "Текущая неделя" : curOffset === 1 ? "Следующая неделя" : curOffset > 0 ? `Через ${curOffset} нед.` : `${-curOffset} нед. назад`}</span>
-            <Link href={`/schedule?view=week&w=${curOffset + 1}`} className="inline-flex h-9 items-center gap-1 rounded-lg px-2 text-sm hover:bg-muted">
+            <Link href={`/schedule?view=week&w=${curOffset + 1}`} className="inline-flex h-10 items-center gap-1 rounded-lg px-2 text-sm hover:bg-muted">
               След. <ChevronRight className="size-4" />
             </Link>
           </div>
@@ -154,13 +146,17 @@ export default async function SchedulePage({ searchParams }: { searchParams: SP 
             {days.map((d) => {
               const k = mskDateKey(d);
               const list = byDay.get(k) ?? [];
+              const dayExams = examsBy.get(k) ?? [];
               return (
                 <section key={k} aria-label={formatWeekday(d)}>
                   <h2 className={cn("mb-2 text-sm font-semibold first-letter:uppercase", k === todayKey && "text-primary")}>
                     {formatWeekday(d)}, {formatDayMonth(d)} {k === todayKey && "· сегодня"}
                   </h2>
-                  {list.length ? (
-                    <div className="space-y-2">{list.map((l) => <LessonCard key={l.id} l={l} now={now} />)}</div>
+                  {list.length || dayExams.length ? (
+                    <div className="space-y-2">
+                      {dayExams.map((e) => <ExamCard key={e.id} e={e} />)}
+                      {list.map((l) => <LessonCard key={l.id} l={l} now={now} />)}
+                    </div>
                   ) : (
                     <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">Пар нет</p>
                   )}
@@ -187,9 +183,19 @@ export default async function SchedulePage({ searchParams }: { searchParams: SP 
   );
 }
 
-function DayList({ lessons, now }: { lessons: LessonView[]; now: Date }) {
-  if (!lessons.length) {
+function DayList({ lessons, exams, now }: { lessons: LessonView[]; exams: ExamView[]; now: Date }) {
+  if (!lessons.length && !exams.length) {
     return <EmptyState icon={CalendarCheck2} title="В этот день пар нет" text="Можно выдохнуть или заглянуть в расписание на неделю." />;
   }
-  return <div className="space-y-2">{lessons.map((l) => <LessonCard key={l.id} l={l} now={now} />)}</div>;
+  return (
+    <div className="space-y-2">
+      {exams.map((e) => <ExamCard key={e.id} e={e} />)}
+      {lessons.map((l) => <LessonCard key={l.id} l={l} now={now} />)}
+      {exams.length > 0 && !lessons.length && (
+        <p className="rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">
+          Пар в этот день нет — только {exams.some((e) => e.retake) ? "пересдача" : "экзамен"}. Удачи!
+        </p>
+      )}
+    </div>
+  );
 }

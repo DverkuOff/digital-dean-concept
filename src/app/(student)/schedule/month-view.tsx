@@ -3,11 +3,8 @@ import { ChevronLeft, ChevronRight, CalendarClock, RefreshCcw, TriangleAlert } f
 import type { LessonView } from "@/server/dal/schedule";
 import { addDays, formatDayMonth, formatMonthYear, formatShortWeekday, formatTime, mskDateKey, startOfMskWeek } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-
-export const MONTH_MIN = -1;
-export const MONTH_MAX = 2;
-
-export type MonthExam = { id: string; at: Date; name: string; room: string | null; retake: boolean };
+import { MONTH_MAX, MONTH_MIN } from "@/lib/schedule/nav";
+import type { ExamView } from "@/components/app/exam-card";
 
 const WEEKDAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 const CHANGE_LABEL: Record<string, string> = { moved: "перенос", room_changed: "другая аудитория", cancelled: "отмена" };
@@ -26,7 +23,7 @@ export function MonthView({
   monthStart: Date;
   offset: number;
   lessons: LessonView[];
-  exams: MonthExam[];
+  exams: ExamView[];
   now: Date;
 }) {
   const monthKey = mskDateKey(monthStart).slice(0, 7);
@@ -43,7 +40,7 @@ export function MonthView({
     const k = mskDateKey(l.startsAt);
     lessonsBy.set(k, [...(lessonsBy.get(k) ?? []), l]);
   }
-  const examsBy = new Map<string, MonthExam[]>();
+  const examsBy = new Map<string, ExamView[]>();
   for (const e of exams) {
     const k = mskDateKey(e.at);
     examsBy.set(k, [...(examsBy.get(k) ?? []), e]);
@@ -106,7 +103,7 @@ export function MonthView({
                   outside && !exam && "opacity-40",
                   outside && exam && "opacity-80",
                   past && !outside && "text-muted-foreground",
-                  exam && (retake ? "bg-destructive/10 ring-1 ring-destructive/40" : "bg-primary/10 ring-1 ring-primary/40"),
+                  exam && (retake ? "bg-destructive/10 ring-1 ring-destructive/40 dark:bg-destructive/25 dark:ring-destructive/70" : "bg-primary/10 ring-1 ring-primary/40 dark:bg-primary/25 dark:ring-primary/70"),
                   isToday && "ring-2 ring-primary",
                 )}
               >
@@ -114,10 +111,13 @@ export function MonthView({
                 {hasChange && <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-warning" aria-hidden />}
                 <span className="mt-auto flex flex-wrap items-center gap-0.5" aria-hidden>
                   {exam ? (
-                    <span className={cn("truncate text-[10px] font-semibold md:text-xs", retake ? "text-destructive" : "text-primary")}>
-                      <span className="md:hidden">{retake ? "пер." : "экз."}</span>
-                      <span className="hidden md:inline">{retake ? "Пересдача" : "Экзамен"}</span>
-                    </span>
+                    <>
+                      {/* На 360 px клетка ~40 px: подпись во всю ширину клетки, «пересд.», а не двусмысленное «пер.». */}
+                      <span className={cn("absolute inset-x-0 bottom-1.5 text-center text-[9.5px] font-semibold leading-none tracking-tight md:hidden", retake ? "text-destructive" : "text-primary")}>
+                        {retake ? "пересд." : "экзамен"}
+                      </span>
+                      <span className={cn("hidden text-xs font-semibold md:inline", retake ? "text-destructive" : "text-primary")}>{retake ? "Пересдача" : "Экзамен"}</span>
+                    </>
                   ) : (
                     <>
                       {list.slice(0, 4).map((l) => (
@@ -140,10 +140,10 @@ export function MonthView({
           <span className="size-2 rounded-full bg-warning" aria-hidden /> изменения
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-2.5 rounded-sm bg-primary/30 ring-1 ring-primary/50" aria-hidden /> экзамен
+          <span className="size-2.5 rounded-sm bg-primary/40 ring-1 ring-primary dark:bg-primary/60" aria-hidden /> экзамен
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-2.5 rounded-sm bg-destructive/25 ring-1 ring-destructive/50" aria-hidden /> пересдача
+          <span className="size-2.5 rounded-sm bg-destructive/35 ring-1 ring-destructive dark:bg-destructive/60" aria-hidden /> пересдача
         </span>
       </p>
 
@@ -167,7 +167,7 @@ export function MonthView({
                     {ev.kind === "exam" ? `${ev.e.retake ? "Пересдача" : "Экзамен"}: ${ev.e.name}` : `${ev.l.discipline}: ${CHANGE_LABEL[ev.l.status] ?? "изменение"}`}
                   </span>
                   <span className="block text-sm text-muted-foreground">
-                    {formatShortWeekday(ev.at)}, {formatDayMonth(ev.at)}, {formatTime(ev.at)}
+                    {formatShortWeekday(ev.at)}, {formatDayMonth(ev.at)}, {ev.kind === "exam" ? formatTime(ev.at) : changeWhat(ev.l)}
                     {ev.kind === "exam" ? (ev.e.room ? ` · ${ev.e.room}` : "") : ev.l.changeNote ? ` · ${ev.l.changeNote}` : ""}
                   </span>
                 </span>
@@ -183,17 +183,27 @@ export function MonthView({
   );
 }
 
+/** Что изменилось: перенос — «10:40 → 16:00», аудитория — «14:20, ауд. 420 → 2210», отмена — время. */
+function changeWhat(l: LessonView): string {
+  if (l.status === "moved" && l.originalStartsAt) return `${formatTime(l.originalStartsAt)} → ${formatTime(l.startsAt)}`;
+  if (l.status === "room_changed" && l.originalRoom) {
+    const to = l.originalRoom.startsWith("ауд. ") && l.room.startsWith("ауд. ") ? l.room.slice(5) : l.room;
+    return `${formatTime(l.startsAt)}, ${l.originalRoom} → ${to}`;
+  }
+  return formatTime(l.startsAt);
+}
+
 function MonthNav({ offset, disabled, label, dir }: { offset: number; disabled: boolean; label: string; dir: "prev" | "next" }) {
   const Icon = dir === "prev" ? ChevronLeft : ChevronRight;
   if (disabled) {
     return (
-      <span className="grid size-9 place-items-center rounded-lg text-muted-foreground/40" aria-hidden>
+      <span className="grid size-10 place-items-center rounded-lg text-muted-foreground/40" aria-hidden>
         <Icon className="size-4" />
       </span>
     );
   }
   return (
-    <Link href={`/schedule?view=month&m=${offset}`} className="press grid size-9 place-items-center rounded-lg hover:bg-muted" aria-label={label}>
+    <Link href={`/schedule?view=month&m=${offset}`} className="press grid size-10 place-items-center rounded-lg hover:bg-muted" aria-label={label}>
       <Icon className="size-4" />
     </Link>
   );
