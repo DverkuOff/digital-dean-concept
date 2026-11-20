@@ -16,6 +16,12 @@ test("готовое заявление на пересдачу: «Сегодн�
        where u.username = 'orlov2' and r.type = 'retake_application'`,
     ).then((r) => r[0].n);
 
+  // Файл 13 упирает orlov2 в лимит 10 активных заявок — освобождаем место (не предмет этого теста).
+  await sql(
+    `update request set status = 'rejected' where payload->>'purpose' like 'Параллельно %'
+       and student_id = (select s.id from student s join "user" u on u.id = s.user_id where u.username = 'orlov2')`,
+  );
+
   // Подаём из рейтинга.
   await page.goto("/rating");
   await page.getByRole("button", { name: "Подать заявление" }).click();
