@@ -1,5 +1,5 @@
 import { Check, Circle, CornerUpLeft, X } from "lucide-react";
-import { STATUS_META, TIMELINE_STEPS, type RequestStatus } from "@/lib/requests/catalog";
+import { pendingSteps, STATUS_META, type RequestStatus } from "@/lib/requests/catalog";
 import { formatDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
@@ -7,9 +7,7 @@ type Ev = { id: string; status: RequestStatus; comment: string | null; actor: st
 
 /** Таймлайн «как у посылки»: прошедшие события + оставшиеся шаги серым. */
 export function RequestTimeline({ events, status }: { events: Ev[]; status: RequestStatus }) {
-  const reached = new Set(events.map((e) => e.status));
-  const future = status === "rejected" ? [] : TIMELINE_STEPS.filter((s) => !reached.has(s) || (status === "returned" && s !== "submitted"));
-  const pending = status === "returned" ? TIMELINE_STEPS.slice(1) : future;
+  const pending = pendingSteps(events.map((e) => e.status), status);
 
   return (
     <ol className="relative ml-3 border-l-2 border-muted pl-6" data-testid="timeline">

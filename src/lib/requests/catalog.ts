@@ -208,6 +208,14 @@ export const COMMENT_REQUIRED: RequestStatus[] = ["returned", "rejected"];
 /** Порядок шагов таймлайна «как посылка». */
 export const TIMELINE_STEPS: RequestStatus[] = ["submitted", "in_progress", "ready", "done"];
 
+/** Оставшиеся шаги таймлайна. После возврата и переподачи путь начинается заново: считаем только события после последнего возврата. */
+export function pendingSteps(history: RequestStatus[], status: RequestStatus): RequestStatus[] {
+  if (status === "rejected") return [];
+  if (status === "returned") return TIMELINE_STEPS.slice(1);
+  const reached = new Set(history.slice(history.lastIndexOf("returned") + 1));
+  return TIMELINE_STEPS.filter((s) => !reached.has(s));
+}
+
 /** Значение поля заявки для показа: даты — «дд.мм.гггг». */
 export function displayFieldValue(f: FieldDef, value: string): string {
   if (f.kind === "date") {
