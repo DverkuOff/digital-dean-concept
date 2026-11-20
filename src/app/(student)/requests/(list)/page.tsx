@@ -71,7 +71,7 @@ function RequestRow({ r }: { r: MyRequest }) {
         href={`/requests/${r.id}`}
         data-testid="request-row"
         className={cn(
-          "flex gap-3 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10 hover:bg-muted/40",
+          "press-soft flex gap-3 rounded-xl bg-card p-3.5 ring-1 ring-foreground/10 hover:bg-muted/40",
           r.status === "returned" && "ring-warning/70",
           r.status === "ready" && "ring-success/50",
         )}

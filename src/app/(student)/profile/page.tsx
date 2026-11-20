@@ -49,7 +49,7 @@ export default async function ProfilePage() {
 
       <Link
         href="/notifications"
-        className="mt-4 flex items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/10 hover:bg-muted/50"
+        className="press-soft mt-4 flex items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/10 hover:bg-muted/50"
       >
         <Bell className="size-5 text-primary" aria-hidden />
         <span className="flex-1 font-medium">Уведомления и новости деканата</span>

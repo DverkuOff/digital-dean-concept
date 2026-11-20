@@ -151,6 +151,13 @@
   html {
     @apply font-sans;
   }
+  /* Трекинг зависит от кегля: крупные заголовки плотнее, основной текст — как есть. */
+  h1 {
+    letter-spacing: -0.02em;
+  }
+  h2 {
+    letter-spacing: -0.01em;
+  }
 }
 
 /* Нижний таббар не перекрывает контент и учитывает «чёлку» iPhone. */
@@ -160,9 +167,101 @@
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }
+/* ── Движение. Кривые и длительности — из гайда Эмила Ковальски (skill animate) и WWDC «Designing Fluid Interfaces».
+   Анимируем только transform и opacity; всё короче 300 мс; при prefers-reduced-motion — без сдвигов. ── */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Нажатие: мгновенный отклик на touch-down, как у физической кнопки. */
+@utility press {
+  transition-property: transform, background-color, box-shadow, color;
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+  &:active {
+    transform: scale(0.97);
+  }
+}
+/* Для крупных карточек — едва заметно, иначе «прыгает» весь блок. */
+@utility press-soft {
+  transition-property: transform, background-color, box-shadow;
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+  &:active {
+    transform: scale(0.985);
+  }
+}
+
+/* Вход страницы: блоки поднимаются на 8 px и проявляются лесенкой по 40 мс. Не блокирует ввод. */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.page-enter > * {
+  animation: page-in 280ms var(--ease-out) both;
+}
+.page-enter > :nth-child(2) { animation-delay: 40ms; }
+.page-enter > :nth-child(3) { animation-delay: 80ms; }
+.page-enter > :nth-child(4) { animation-delay: 120ms; }
+.page-enter > :nth-child(5) { animation-delay: 160ms; }
+.page-enter > :nth-child(n + 6) { animation-delay: 200ms; }
+
+/* Появление скрытых элементов (карточки «Показать ещё», раскрытые блоки): из display:none — через @starting-style. */
+.reveal {
+  transition-property: opacity, transform, display;
+  transition-duration: 240ms;
+  transition-timing-function: var(--ease-out);
+  transition-behavior: allow-discrete;
+  @starting-style {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* Карточка уходит: сжимается по высоте (grid 1fr → 0fr) и тает — список не «прыгает». */
+.collapse-out {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows 220ms var(--ease-out),
+    opacity 180ms var(--ease-out),
+    transform 220ms var(--ease-out),
+    margin 220ms var(--ease-out);
+}
+.collapse-out > * {
+  min-height: 0;
+  overflow: hidden;
+}
+.collapse-out[data-leaving] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transform: scale(0.97);
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  /* Меньше и мягче, а не ноль: сдвиги и масштаб убираем, смену прозрачности оставляем короткой. */
+  .page-enter > * {
+    animation-name: fade-only;
+    animation-duration: 150ms;
+  }
+  .press:active,
+  .press-soft:active {
+    transform: none;
+  }
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+@keyframes fade-only {
+  from {
+    opacity: 0;
   }
 }

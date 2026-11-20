@@ -47,11 +47,17 @@ export default async function SchedulePage({ searchParams }: { searchParams: SP 
     <>
       <PageHeader title="Расписание" description={formatDayRange(weekStart, addDays(weekStart, 5))} />
 
-      <div className="mb-4 grid grid-cols-2 rounded-xl bg-muted p-1 text-sm font-medium" role="tablist">
-        <Link role="tab" aria-selected={view === "day"} href="/schedule" className={cn("rounded-lg py-2 text-center", view === "day" ? "bg-card shadow-sm" : "text-muted-foreground")}>
+      <div className="relative mb-4 grid grid-cols-2 rounded-xl bg-muted p-1 text-sm font-medium" role="tablist">
+        {/* Подложка одна и та же при смене вида (страница не перемонтируется) — поэтому она плавно переезжает. */}
+        <span
+          aria-hidden
+          className="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-lg bg-card shadow-sm ring-1 ring-foreground/10 transition-transform duration-250 ease-(--ease-in-out) dark:bg-foreground/15"
+          style={{ transform: view === "week" ? "translateX(100%)" : "none" }}
+        />
+        <Link role="tab" aria-selected={view === "day"} href="/schedule" className={cn("press relative rounded-lg py-2 text-center transition-colors", view === "day" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
           День
         </Link>
-        <Link role="tab" aria-selected={view === "week"} href="/schedule?view=week" className={cn("rounded-lg py-2 text-center", view === "week" ? "bg-card shadow-sm" : "text-muted-foreground")}>
+        <Link role="tab" aria-selected={view === "week"} href="/schedule?view=week" className={cn("press relative rounded-lg py-2 text-center transition-colors", view === "week" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
           Неделя
         </Link>
       </div>
@@ -71,7 +77,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: SP 
 
       {view === "day" ? (
         <>
-          <div className="-mx-4 mb-4 flex gap-1.5 overflow-x-auto px-4 pb-1" aria-label="Дни недели">
+          <div className="-mx-4 mb-3 flex gap-1.5 overflow-x-auto px-4 py-1" aria-label="Дни недели">
             {days.map((d) => {
               const k = mskDateKey(d);
               const active = k === mskDateKey(day);
@@ -82,9 +88,9 @@ export default async function SchedulePage({ searchParams }: { searchParams: SP 
                   href={`/schedule?d=${k}`}
                   aria-current={active ? "date" : undefined}
                   className={cn(
-                    "relative flex min-w-13 flex-1 flex-col items-center rounded-xl px-2 py-2 text-sm ring-1 ring-foreground/10",
-                    active ? "bg-primary text-primary-foreground ring-primary" : "bg-card",
-                    k === todayKey && !active && "ring-2 ring-primary/50",
+                    "press relative flex min-w-13 flex-1 flex-col items-center rounded-xl px-2 py-2 text-sm ring-1 ring-foreground/10 ring-inset",
+                    active ? "bg-primary text-primary-foreground ring-primary" : "bg-card hover:bg-muted",
+                    k === todayKey && !active && "ring-2 ring-primary/60",
                   )}
                 >
                   <span className="text-[11px] uppercase opacity-80">{formatShortWeekday(d)}</span>
@@ -144,7 +150,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: SP 
 
       <Link
         href="/schedule/calendar"
-        className="mt-7 flex items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/10 hover:bg-muted/40"
+        className="press-soft mt-7 flex items-center gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/10 hover:bg-muted/40"
         data-testid="calendar-teaser"
       >
         <CalendarPlus className="size-5 shrink-0 text-primary" aria-hidden />

@@ -25,7 +25,7 @@ export default async function NewRequestPage({ searchParams }: { searchParams: S
             <li key={t.key}>
               <Link
                 href={`/requests/new?type=${t.key}`}
-                className="flex h-full gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10 hover:bg-muted/40"
+                className="press-soft flex h-full gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10 hover:bg-muted/40"
               >
                 <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground">
                   <RequestIcon icon={t.icon} />

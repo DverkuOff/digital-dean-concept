@@ -42,11 +42,16 @@ export default async function NotificationsPage({ searchParams }: { searchParams
           ) : undefined
         }
       />
-      <div className="mb-4 grid grid-cols-2 rounded-xl bg-muted p-1 text-sm font-medium" role="tablist">
-        <Link role="tab" aria-selected={!isNews} href="/notifications" className={cn("rounded-lg py-2 text-center", !isNews ? "bg-card shadow-sm" : "text-muted-foreground")}>
+      <div className="relative mb-4 grid grid-cols-2 rounded-xl bg-muted p-1 text-sm font-medium" role="tablist">
+        <span
+          aria-hidden
+          className="absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-lg bg-card shadow-sm ring-1 ring-foreground/10 transition-transform duration-250 ease-(--ease-in-out) dark:bg-foreground/15"
+          style={{ transform: isNews ? "translateX(100%)" : "none" }}
+        />
+        <Link role="tab" aria-selected={!isNews} href="/notifications" className={cn("press relative rounded-lg py-2 text-center transition-colors", !isNews ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
           Мне {unread > 0 && <span className="ml-1 rounded-full bg-destructive px-1.5 text-[11px] text-white">{unread}</span>}
         </Link>
-        <Link role="tab" aria-selected={isNews} href="/notifications?tab=news" className={cn("rounded-lg py-2 text-center", isNews ? "bg-card shadow-sm" : "text-muted-foreground")}>
+        <Link role="tab" aria-selected={isNews} href="/notifications?tab=news" className={cn("press relative rounded-lg py-2 text-center transition-colors", isNews ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
           Новости деканата
         </Link>
       </div>
@@ -91,7 +96,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
             return (
               <li key={n.id}>
                 {n.link ? (
-                  <Link href={n.link} className={cn(cls, "hover:bg-muted/40")}>
+                  <Link href={n.link} className={cn(cls, "press-soft hover:bg-muted/40")}>
                     {body}
                   </Link>
                 ) : (

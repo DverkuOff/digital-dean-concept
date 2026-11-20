@@ -56,7 +56,12 @@ export function ThemeSwitcher() {
     listeners.forEach((l) => l());
   };
   return (
-    <div role="radiogroup" aria-label="Оформление" className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1" data-testid="theme-switcher">
+    <div role="radiogroup" aria-label="Оформление" className="relative grid grid-cols-3 rounded-xl bg-muted p-1" data-testid="theme-switcher">
+      <span
+        aria-hidden
+        className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-lg bg-card shadow-sm ring-1 ring-foreground/10 transition-transform duration-250 ease-(--ease-in-out) dark:bg-foreground/15"
+        style={{ transform: `translateX(${OPTIONS.findIndex((o) => o.value === choice) * 100}%)` }}
+      />
       {OPTIONS.map(({ value, label, icon: Icon }) => (
         <button
           key={value}
@@ -65,8 +70,8 @@ export function ThemeSwitcher() {
           aria-checked={choice === value}
           onClick={() => set(value)}
           className={cn(
-            "flex flex-col items-center gap-0.5 rounded-lg py-2 text-xs font-medium text-muted-foreground",
-            choice === value && "bg-card text-foreground shadow-sm",
+            "press relative flex flex-col items-center gap-0.5 rounded-lg py-2 text-xs font-medium text-muted-foreground transition-colors",
+            choice === value && "text-foreground",
           )}
         >
           <Icon className="size-4" aria-hidden />

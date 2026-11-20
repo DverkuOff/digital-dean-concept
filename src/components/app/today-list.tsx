@@ -16,14 +16,14 @@ export function TodayList({ cards }: { cards: Card[] }) {
     <>
       <ul className="space-y-2.5">
         {cards.map((c, i) => (
-          <TodayCard key={c.key} card={c} hidden={!all && i >= FIRST} />
+          <TodayCard key={c.key} card={c} hidden={!all && i >= FIRST} revealDelay={i >= FIRST ? (i - FIRST) * 50 : undefined} />
         ))}
       </ul>
       {!all && rest > 0 && (
         <button
           type="button"
           onClick={() => setAll(true)}
-          className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl py-2.5 text-sm font-medium text-primary hover:bg-accent"
+          className="press mt-2 flex w-full items-center justify-center gap-1 rounded-xl py-2.5 text-sm font-medium text-primary hover:bg-accent"
         >
           Показать ещё {rest} {plural(rest, "событие", "события", "событий")} <ChevronDown className="size-4" aria-hidden />
         </button>

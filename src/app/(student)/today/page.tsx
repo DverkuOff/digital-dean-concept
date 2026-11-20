@@ -78,7 +78,7 @@ export default async function TodayPage() {
 
       <Link
         href="/rating"
-        className="mt-7 flex items-center gap-4 rounded-2xl bg-primary p-4 text-primary-foreground shadow-sm hover:bg-primary/90"
+        className="press-soft mt-7 flex items-center gap-4 rounded-2xl bg-primary p-4 text-primary-foreground shadow-sm hover:bg-primary/90"
         data-testid="rating-teaser"
       >
         <div className="grid size-14 shrink-0 place-items-center rounded-xl bg-white/15 text-xl font-semibold tabular-nums">{formatScore(rating.rating)}</div>

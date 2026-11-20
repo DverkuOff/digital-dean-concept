@@ -71,7 +71,7 @@ export default async function GradesPage() {
         </div>
         <Link
           href="/rating"
-          className="mt-4 flex items-center justify-between rounded-xl bg-card px-4 py-3 text-sm font-medium ring-1 ring-foreground/10 hover:bg-muted/50"
+          className="press-soft mt-4 flex items-center justify-between rounded-xl bg-card px-4 py-3 text-sm font-medium ring-1 ring-foreground/10 hover:bg-muted/50"
         >
           <span className="flex items-center gap-2">
             <Compass className="size-4 text-primary" aria-hidden />
