@@ -37,7 +37,7 @@ export function RequestThread({ requestId, messages, action, viewer }: Props) {
                   <p className={cn("text-xs", mine ? "opacity-80" : "text-muted-foreground")}>
                     {m.author === "staff" ? `${m.authorName}, учебный офис` : m.authorName} · {formatDateTime(new Date(m.createdAt))}
                   </p>
-                  <p className="mt-0.5 whitespace-pre-line">{m.text}</p>
+                  <p className="mt-0.5 whitespace-pre-line [overflow-wrap:anywhere]">{m.text}</p>
                 </div>
               </li>
             );

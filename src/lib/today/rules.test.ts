@@ -32,6 +32,18 @@ describe("buildTodayCards", () => {
     expect(cards.some((c) => c.key === "deadline:d1")).toBe(false);
   });
 
+  it("заявление на пересдачу уже подано — карточка показывает его, а не просит подать снова", () => {
+    const input = empty();
+    input.retakes.push({ id: "r1", kind: "retake2", scheduledAt: h(24 * 9), room: "ауд. 2034", discipline: "Макроэкономика" });
+    input.deadlines.push({ id: "d1", title: "Заявление на пересдачу", body: "Подайте заявление на пересдачу по макроэкономике", link: "/requests/new?type=retake_application", dueAt: h(24 * 5) });
+    input.requests.push({ id: "q1", type: "retake_application", status: "submitted", updatedAt: h(-1), returnReason: null, staffComment: null });
+    const cards = buildTodayCards(input);
+    expect(cards).toHaveLength(1);
+    expect(cards[0].extra).toContain("подано");
+    expect(cards[0].href).toBe("/requests/q1");
+    expect(cards[0].cta).toBe("Открыть заявление");
+  });
+
   it("«понял» скрывает карточку по ключу, новый возврат той же заявки — новый ключ", () => {
     const input = empty();
     input.requests.push({ id: "q1", type: "absence_excuse", status: "returned", updatedAt: h(-2), returnReason: "Даты", staffComment: null });

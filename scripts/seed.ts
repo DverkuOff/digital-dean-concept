@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as s from "../src/server/db/schema";
 import { ARGON2_OPTIONS } from "../src/server/password-opts";
-import { DAY_MS, addDays, formatDayMonth, mskAt, mskDateKey, startOfMskDay, startOfMskWeek } from "../src/lib/dates";
+import { DAY_MS, addDays, formatDayMonth, formatShortWeekday, formatTime, mskAt, mskDateKey, startOfMskDay, startOfMskWeek } from "../src/lib/dates";
 
 type DB = NodePgDatabase<typeof s>;
 
@@ -363,6 +363,16 @@ export async function seed(db: DB, now = new Date()) {
     aChange.changedAt = new Date(now.getTime() - 20 * 60 * 60 * 1000);
   }
   for (let i = 0; i < lessons.length; i += 200) await db.insert(s.lesson).values(lessons.slice(i, i + 200));
+  // Уведомление о переносе — про тот же ближайший перенос, что и карточка «Сегодня», с датой и временем.
+  const nearestMove = lessons
+    .filter((l) => l.groupCode === GROUP_B && l.status === "moved" && l.startsAt!.getTime() >= now.getTime())
+    .sort((a, b) => a.startsAt!.getTime() - b.startsAt!.getTime())[0];
+  const moveKey = nearestMove ? (Object.keys(discId) as DiscKey[]).find((k) => discId[k] === nearestMove.disciplineId) : undefined;
+  const moveName = moveKey ? DISCIPLINES[moveKey].name : "семинар";
+  const moveBody = nearestMove
+    ? `${formatShortWeekday(nearestMove.startsAt!)}, ${formatDayMonth(nearestMove.startsAt!)}: ${formatTime(nearestMove.originalStartsAt!)} → ${formatTime(nearestMove.startsAt!)}. ${nearestMove.changeNote}.`
+    : "Семинар перенесён, подробности в расписании.";
+
 
   /* ── Заявки ── */
   async function addRequest(
@@ -377,6 +387,9 @@ export async function seed(db: DB, now = new Date()) {
     const touchedByStaff = history.some((h) => h.actor === "staff");
     const seq = await db.execute(sql`select nextval('request_number_seq')::int as n`);
     const num = Number((seq.rows[0] as { n: number }).n);
+    // Время событий разносим по дню (сдвиг 0–5 ч, свой у каждой заявки), иначе все они ровно во время сброса.
+    const shift = ((num * 53) % 300) * 60_000;
+    const at = (daysAgo: number) => new Date(addDays(now, -daysAgo).getTime() - shift);
     await db.insert(s.request).values({
       assigneeName: touchedByStaff ? STAFF_NAME : null,
       id,
@@ -385,12 +398,12 @@ export async function seed(db: DB, now = new Date()) {
       type,
       status: last.status,
       payload,
-      createdAt: addDays(now, -history[0].daysAgo),
-      updatedAt: addDays(now, -last.daysAgo),
+      createdAt: at(history[0].daysAgo),
+      updatedAt: at(last.daysAgo),
       ...extra,
     });
     await db.insert(s.requestEvent).values(
-      history.map((h) => ({ requestId: id, status: h.status, actor: h.actor, comment: h.comment ?? null, createdAt: addDays(now, -h.daysAgo) })),
+      history.map((h) => ({ requestId: id, status: h.status, actor: h.actor, comment: h.comment ?? null, createdAt: at(h.daysAgo) })),
     );
     return id;
   }
@@ -449,7 +462,7 @@ export async function seed(db: DB, now = new Date()) {
       n(studentA, { kind: "deadline", title: "Выбор темы курсовой работы", body: "Согласуйте тему с научным руководителем и отметьте её в кабинете.", dueAt: mskAt(addDays(today, 9), 18), createdAt: addDays(now, -2) }),
       n(studentA, { kind: "schedule", title: "Смена аудитории", body: "Семинар пройдёт в ауд. 1107: аудитория занята под олимпиаду.", link: "/schedule", createdAt: addDays(now, -0.8) }),
       n(studentA, { kind: "grade", title: "Выставлены баллы за 2-й срез", body: "Эконометрика: 88 из 100.", link: "/grades", createdAt: addDays(now, -6), readAt: addDays(now, -5) }),
-      n(studentB, { kind: "schedule", title: "Перенос семинара по эконометрике", body: "Преподаватель на конференции, семинар перенесён на вечер.", link: "/schedule", createdAt: new Date(now.getTime() - 2 * 3600 * 1000) }),
+      n(studentB, { kind: "schedule", title: `Перенос: ${moveName}`, body: moveBody, link: "/schedule", createdAt: new Date(now.getTime() - 2 * 3600 * 1000) }),
       n(studentB, { kind: "retake", title: "Пересдача 2: Макроэкономика", body: "Пересдача назначена, ауд. 2034. Это последняя попытка перед комиссией.", link: "/rating", dueAt: mskAt(retakeDay, 11), createdAt: addDays(now, -3) }),
       n(studentB, { kind: "request", title: "Заявку вернули: уважительная причина пропуска", body: returnReason, link: "/requests", createdAt: addDays(now, -1) }),
       n(studentB, { kind: "deadline", title: "Заявление на пересдачу", body: "Подайте заявление на пересдачу по макроэкономике, чтобы попасть в ведомость.", link: "/requests/new?type=retake_application", dueAt: mskAt(addDays(today, 7), 18), createdAt: addDays(now, -3) }),
@@ -458,7 +471,7 @@ export async function seed(db: DB, now = new Date()) {
   }
 
   await db.insert(s.news).values([
-    { title: "Опубликовано расписание зимней сессии", body: "Экзамены начнутся через пять недель. Расписание уже в разделе «Учёба» и в календаре.", important: true, publishedAt: addDays(now, -0.5) },
+    { title: "Опубликовано расписание зимней сессии", body: "Экзамены начнутся через пять недель. Расписание уже в разделе «Учёба» и в расписании на месяц.", important: true, publishedAt: addDays(now, -0.5) },
     { title: "Запись на третий иностранный язык", body: "Студенты с рейтингом от 75 могут подать заявку на третий язык до конца месяца. Условия — в разделе «Рейтинг».", faculty: FACULTY, publishedAt: addDays(now, -3) },
     { title: "Учебный офис: часы приёма", body: "Учебный офис принимает студентов пн–пт с 10:00 до 17:00, перерыв 13:00–14:00. Справки можно заказать онлайн в разделе «Заявки».", publishedAt: addDays(now, -6) },
     { title: "Стипендиальная комиссия", body: "Комиссия рассмотрит заявления на повышенную стипендию после зимней сессии. Следите за рейтингом.", faculty: FACULTY, publishedAt: addDays(now, -9) },

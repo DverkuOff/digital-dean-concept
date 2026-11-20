@@ -57,7 +57,7 @@ export default async function NewRequestPage({ searchParams }: { searchParams: S
   return (
     <>
       <Link href="/requests/new" className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ChevronLeft className="size-4" aria-hidden /> Все заявки
+        <ChevronLeft className="size-4" aria-hidden /> Мои заявки
       </Link>
       <PageHeader title={def.title} description={def.description} />
       <p className="mb-4 inline-flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5 text-sm text-secondary-foreground">

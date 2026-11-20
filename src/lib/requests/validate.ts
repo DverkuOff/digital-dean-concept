@@ -23,6 +23,17 @@ export function parseFormDate(v: string, now = new Date()): string | null {
 }
 
 /** «гггг-мм-дд» → «дд.мм.гггг» для показа и полей формы. */
+/** Понятная причина, почему дата не принята: формат, несуществующий день или слишком далёкий год. */
+export function dateError(v: string): string {
+  const m = ISO_RE.exec(v) ?? RU_RE.exec(v);
+  if (!m) return "Укажите дату в формате дд.мм.гггг";
+  const [y, mo, d] = ISO_RE.test(v) ? [m[1], m[2], m[3]] : [m[3], m[2], m[1]];
+  const iso = `${y}-${mo}-${d}`;
+  const t = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(t.getTime()) || t.toISOString().slice(0, 10) !== iso) return "Такой даты нет — проверьте день и месяц";
+  return "Дата слишком далеко: укажите её в пределах года от сегодняшнего дня";
+}
+
 export function formatFormDate(iso: string): string {
   const m = ISO_RE.exec(iso);
   return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
@@ -54,7 +65,7 @@ export function validatePayload(def: RequestTypeDef, raw: Record<string, unknown
       }
       case "date": {
         const iso = parseFormDate(v);
-        if (!iso) errors[f.name] = "Укажите дату в формате дд.мм.гггг";
+        if (!iso) errors[f.name] = dateError(v);
         else {
           data[f.name] = iso;
           continue;

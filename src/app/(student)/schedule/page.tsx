@@ -89,8 +89,9 @@ export default async function SchedulePage({ searchParams }: { searchParams: SP 
             <span className="font-semibold">Изменения на этой неделе: {changes.length}.</span>{" "}
             {changes
               .slice(0, 3)
-              .map((c) => `${c.disciplineShort} (${formatShortWeekday(c.startsAt)})`)
+              .map((c) => `${c.discipline} (${formatShortWeekday(c.startsAt)})`)
               .join(", ")}
+            {changes.length > 3 && ` и ещё ${changes.length - 3}`}
           </p>
         </div>
       )}

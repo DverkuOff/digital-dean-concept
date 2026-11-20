@@ -138,35 +138,44 @@ export async function quickRetakeRequestAction(disciplineId: string, kind: "cons
     .limit(1);
   if (!debt) redirect("/rating");
 
-  const [existing] = await db
-    .select({ id: request.id })
-    .from(request)
-    .where(
-      and(
-        eq(request.studentId, me.id),
-        eq(request.type, kind),
-        inArray(request.status, ["submitted", "in_progress", "returned", "ready"]),
-        sql`${request.payload}->>'discipline' = ${debt.name}`,
-      ),
-    )
-    .limit(1);
-  if (existing) redirect(`/requests/${existing.id}`);
-  if ((await activeCount(me.id)) >= MAX_ACTIVE_REQUESTS) redirect("/requests");
-
   const payload: Record<string, string> =
     kind === "consultation"
       ? { discipline: debt.name, slot: "Будни после 14:00", question: "Подготовка к пересдаче: разобрать ошибки прошлой попытки" }
       : { discipline: debt.name, variant: "Записаться на ближайшую пересдачу", reason: "" };
 
-  const id = await db.transaction(async (tx) => {
+  // Проверка «уже есть такая заявка» и вставка — под той же блокировкой студента, что и обычная подача:
+  // двойной клик или параллельные запросы не создают дубли.
+  const outcome = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${me.id}))`);
+    const [existing] = await tx
+      .select({ id: request.id })
+      .from(request)
+      .where(
+        and(
+          eq(request.studentId, me.id),
+          eq(request.type, kind),
+          inArray(request.status, [...ACTIVE_STATUSES]),
+          sql`${request.payload}->>'discipline' = ${debt.name}`,
+        ),
+      )
+      .limit(1);
+    if (existing) return { existing: existing.id } as const;
+    const [cnt] = await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(request)
+      .where(and(eq(request.studentId, me.id), inArray(request.status, [...ACTIVE_STATUSES])));
+    if ((cnt?.n ?? 0) >= MAX_ACTIVE_REQUESTS) return { limit: true } as const;
     const number = await nextRequestNumber(tx);
     const [row] = await tx
       .insert(request)
       .values({ number, studentId: me.id, type: kind, status: "submitted", payload })
       .returning({ id: request.id });
     await tx.insert(requestEvent).values({ requestId: row.id, status: "submitted", actor: "student", comment: "Подана из рейтинг-навигатора" });
-    return row.id;
+    return { id: row.id } as const;
   });
+  if ("existing" in outcome) redirect(`/requests/${outcome.existing}`);
+  if ("limit" in outcome) redirect("/requests");
+  const id = outcome.id;
   revalidatePath("/requests");
   redirect(`/requests/${id}?created=1`);
 }

@@ -41,3 +41,12 @@ describe("validatePayload", () => {
     expect(ok).toEqual({ ok: true, data: { dateFrom: `${y}-11-10`, dateTo: `${y}-11-12`, reason: "Болезнь" } });
   });
 });
+
+describe("dateError", () => {
+  it("различает формат, несуществующий день и далёкий год", async () => {
+    const { dateError } = await import("./validate");
+    expect(dateError("завтра")).toContain("дд.мм.гггг");
+    expect(dateError("31.02.2026")).toBe("Такой даты нет — проверьте день и месяц");
+    expect(dateError("01.02.2031")).toContain("в пределах года");
+  });
+});

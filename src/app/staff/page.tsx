@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { StatusBadge } from "@/components/app/status-badge";
 import { RequestIcon } from "@/components/app/request-icon";
 import { StaffActions } from "./staff-actions";
-import { displayFieldValue, getRequestType, STAFF_TRANSITIONS, STATUS_META, type RequestStatus } from "@/lib/requests/catalog";
+import { displayFieldValue, getRequestType, STAFF_TRANSITIONS, type RequestStatus } from "@/lib/requests/catalog";
 import { addBusinessDays, formatDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,16 @@ const FILTERS: { key: "active" | "all" | RequestStatus; label: string }[] = [
   { key: "ready", label: "Готовы" },
   { key: "all", label: "Все" },
 ];
+
+// Подсказки для методиста (у STATUS_META.hint — тексты для студента).
+const STAFF_HINT: Record<string, string> = {
+  submitted: "Новая заявка: возьмите её в работу",
+  in_progress: "В работе у учебного офиса",
+  returned: "Вернули студенту на исправление — ждём повторной подачи",
+  ready: "Готово — ждёт, пока студент заберёт",
+  done: "Выдана, заявка закрыта",
+  rejected: "Отклонена — причина в истории заявки",
+};
 
 export default async function StaffQueuePage({ searchParams }: { searchParams: Promise<{ f?: string }> }) {
   const { f } = await searchParams;
@@ -131,7 +141,7 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
                         fields={(def?.fields ?? []).map((x) => ({ name: x.name, label: x.label }))}
                       />
                     ) : (
-                      <p className="text-sm text-muted-foreground">{STATUS_META[r.status].hint}</p>
+                      <p className="text-sm text-muted-foreground">{STAFF_HINT[r.status]}</p>
                     )}
                     {(threads.get(r.id)?.length ?? 0) > 0 && (
                       <div className="mt-4 border-t pt-3">

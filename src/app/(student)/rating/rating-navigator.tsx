@@ -53,12 +53,14 @@ export function RatingNavigator({ results, open, debts, cohort, placeNow, nowIso
   const shown = touched ? projected : current;
   const thresholds = evaluateThresholds(shown, cfg);
   const thresholdsNow = evaluateThresholds(current, cfg);
-  // «Сейчас» — точное место с сервера; «что если» — оценка по гистограмме (обе стороны сравнения одинаково).
+  // «Сейчас» — точное место с сервера. «Что если» — сдвиг, оценённый по гистограмме (обе стороны одинаково),
+  // и приложенный к точному месту: число и стрелка «на N» всегда сходятся.
   const estNow = estimatePlace(current.rating, cohort);
   const estShown = estimatePlace(shown.rating, cohort);
-  const placeShown = touched ? estShown : placeNow;
-  const delta = touched && current.rating !== null && projected.rating !== null ? round1(projected.rating - current.rating) : 0;
   const placeDelta = touched && estNow && estShown ? estNow.place - estShown.place : 0;
+  const placeShown =
+    touched && placeNow ? { ...placeNow, place: Math.min(placeNow.total, Math.max(1, placeNow.place - placeDelta)) } : touched ? estShown : placeNow;
+  const delta = touched && current.rating !== null && projected.rating !== null ? round1(projected.rating - current.rating) : 0;
 
   // Подсказка «сколько нужно»: ближайший недостигнутый порог при текущих долгах.
   const debtFixed: Hypothesis = {};
@@ -186,7 +188,7 @@ export function RatingNavigator({ results, open, debts, cohort, placeNow, nowIso
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 id="ses" className="text-[15px] font-semibold">Что если: зимняя сессия</h2>
-              <p className="text-sm text-muted-foreground">Ползунки стоят на среднем по срезам</p>
+              <p className="text-sm text-muted-foreground">{withSession ? "Ползунки стоят на среднем по срезам — подвиньте" : "Отметьте «учесть», чтобы прикинуть оценки за сессию"}</p>
             </div>
             <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm font-medium">
               <input type="checkbox" className="size-5 accent-[var(--primary)]" checked={withSession} onChange={(e) => setWithSession(e.target.checked)} />
@@ -295,7 +297,7 @@ function RetakeBlock({ d, now, value, onChange }: { d: DebtInfo; now: Date; valu
             >
               <span className="text-xs font-medium leading-tight">{s.label}</span>
               <span className="mt-1 text-base font-semibold tabular-nums leading-none">
-                {s.result === "failed" ? s.score : s.result === "scheduled" ? (at && at < now ? "?" : "→") : s.result === "passed" ? s.score : "·"}
+                {s.result === "failed" ? s.score : s.result === "scheduled" ? (at && at < now ? "?" : "→") : s.result === "passed" ? s.score : "—"}
               </span>
               <span className="mt-1 text-[11px] leading-tight">
                 {at

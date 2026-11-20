@@ -24,7 +24,16 @@ export function RequestTransparency({ def, status, createdAt, assigneeName, queu
   return (
     <section className="mt-5 divide-y rounded-2xl bg-card ring-1 ring-foreground/10" aria-label="Кто ведёт и сколько ждать" data-testid="transparency">
       <Row icon={UserRound} label="Кто ведёт">
-        {taken ? (
+        {status === "returned" ? (
+          <>
+            Сейчас заявка у вас: исправьте и подайте снова
+            {assigneeName && (
+              <span className="block text-muted-foreground">
+                Вопросы по возврату — методисту: <b className="font-medium text-foreground">{assigneeName}</b>
+              </span>
+            )}
+          </>
+        ) : taken ? (
           <>
             <b>{assigneeName}</b>, методист учебного офиса МЭО
           </>
@@ -33,7 +42,7 @@ export function RequestTransparency({ def, status, createdAt, assigneeName, queu
         )}
       </Row>
       <Row icon={Clock} label="Обычный срок">
-        Обычно готовят за {days}
+        Обычно готовят за {days}, по регламенту — {def.eta}
         {active && (
           <span className={cn("block", late ? "font-medium text-warning-foreground" : "text-muted-foreground")}>
             {late ? `Дольше обычного: ждали к ${formatDayMonth(due)}` : `Примерно к ${formatDayMonth(due)}`}

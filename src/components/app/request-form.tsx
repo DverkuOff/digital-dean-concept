@@ -53,8 +53,9 @@ function Field({ f, value, error, highlight }: { f: FieldDef; value?: string; er
     id,
     name: f.name,
     defaultValue: value ?? (f.kind === "number" ? String(f.min) : ""),
-    "aria-invalid": error ? true : undefined,
-    "aria-describedby": error ? `${id}-err` : undefined,
+    // Поле, которое методист попросил исправить, тоже помечаем для скринридера.
+    "aria-invalid": error || highlight ? true : undefined,
+    "aria-describedby": error ? `${id}-err` : highlight ? `${id}-fix` : undefined,
   };
   return (
     <div className={cn("space-y-1.5", highlight && "-mx-3 rounded-xl bg-warning/15 p-3 ring-1 ring-warning/60")}>
@@ -62,7 +63,7 @@ function Field({ f, value, error, highlight }: { f: FieldDef; value?: string; er
         {f.label}
         {f.required && <span className="text-destructive"> *</span>}
       </Label>
-      {highlight && <p className="text-xs font-medium text-warning-foreground">Методист просит исправить это поле</p>}
+      {highlight && <p id={`${id}-fix`} className="text-xs font-medium text-warning-foreground">Методист просит исправить это поле</p>}
       {f.kind === "textarea" ? (
         <Textarea {...common} rows={3} placeholder={f.placeholder} maxLength={f.maxLength} className="bg-card text-base" />
       ) : f.kind === "select" ? (

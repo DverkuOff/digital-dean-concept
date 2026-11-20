@@ -56,13 +56,13 @@ export function LessonNote({ lessonId, note, label }: { lessonId: string; note: 
       aria-label={`Изменить заметку: ${current}`}
     >
       <StickyNote className="mt-0.5 size-3.5 shrink-0 text-warning-foreground" aria-hidden />
-      <span className="whitespace-pre-line">{current}</span>
+      <span className="min-w-0 whitespace-pre-line [overflow-wrap:anywhere]">{current}</span>
     </button>
   ) : (
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="mt-1.5 inline-flex items-center gap-1 rounded-md py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+      className="press -mx-1.5 mt-1 inline-flex min-h-8 items-center gap-1 rounded-md px-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
       data-testid="add-note"
     >
       <NotebookPen className="size-3.5" aria-hidden /> Заметка

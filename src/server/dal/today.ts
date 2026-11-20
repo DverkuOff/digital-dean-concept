@@ -49,7 +49,13 @@ export async function getTodayCards(now = new Date()) {
     db
       .select({ id: request.id, type: request.type, status: request.status, updatedAt: request.updatedAt, returnReason: request.returnReason, staffComment: request.staffComment })
       .from(request)
-      .where(and(eq(request.studentId, me.id), inArray(request.status, ["returned", "ready"]))),
+      .where(
+        and(
+          eq(request.studentId, me.id),
+          // Поданное и взятое в работу заявление на пересдачу нужно, чтобы «Сегодня» не просила подать его снова.
+          or(inArray(request.status, ["returned", "ready"]), and(eq(request.type, "retake_application"), inArray(request.status, ["submitted", "in_progress"]))),
+        ),
+      ),
     db
       .select({ id: notification.id, title: notification.title, body: notification.body, link: notification.link, dueAt: notification.dueAt })
       .from(notification)

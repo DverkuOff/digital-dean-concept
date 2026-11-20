@@ -145,3 +145,22 @@ test("двойная повторная подача возвращённой з
   expect(n).toBe(1);
   await ctx.close();
 });
+
+test("4 одновременных «Подать заявление» из рейтинга создают одно заявление (находка ПМИ 20.11)", async ({ browser }) => {
+  const { ctx } = await studentPage(browser, "orlov3");
+  const count = () =>
+    sql<{ n: number }>(
+      `select count(*)::int as n from request r join student s on s.id = r.student_id join "user" u on u.id = s.user_id
+       where u.username = 'orlov3' and r.type = 'retake_application' and r.status in ('submitted','in_progress','returned','ready')`,
+    ).then((r) => r[0].n);
+  const before = await count();
+  const pages = await Promise.all(Array.from({ length: 4 }, () => ctx.newPage()));
+  await Promise.all(pages.map((p) => p.goto("/rating")));
+  await Promise.all(pages.map((p) => p.getByRole("button", { name: "Подать заявление" }).click()));
+  await Promise.all(pages.map((p) => expect(p).toHaveURL(/\/requests\/[0-9a-f-]{36}/)));
+  expect((await count()) - before).toBeLessThanOrEqual(1);
+  // Все четыре вкладки пришли к одной и той же заявке.
+  const ids = new Set(pages.map((p) => new URL(p.url()).pathname));
+  expect(ids.size).toBe(1);
+  await ctx.close();
+});

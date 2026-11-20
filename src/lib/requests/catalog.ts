@@ -140,7 +140,7 @@ export type RequestStatus = "submitted" | "in_progress" | "returned" | "ready" |
 
 export const STATUS_META: Record<RequestStatus, { label: string; tone: "info" | "progress" | "warning" | "success" | "muted" | "danger"; hint: string }> = {
   submitted: { label: "Подана", tone: "info", hint: "Ждёт, пока методист возьмёт её в работу" },
-  in_progress: { label: "В работе", tone: "progress", hint: "Методист готовит документ" },
+  in_progress: { label: "В работе", tone: "progress", hint: "Методист учебного офиса занимается заявкой" },
   returned: { label: "Нужно исправить", tone: "warning", hint: "Исправьте отмеченное поле и подайте снова" },
   ready: { label: "Готова", tone: "success", hint: "Документ готов, где забрать — ниже" },
   done: { label: "Выдана", tone: "muted", hint: "Заявка закрыта" },

@@ -44,7 +44,9 @@ export function buildTodayCards(input: TodayInput): TodayCard[] {
 
   // 1. Изменения в расписании на ближайшие дни.
   for (const l of input.lessonChanges) {
-    const when = `${relativeDay(l.startsAt, now)}, ${formatShortWeekday(l.startsAt)}`;
+    const rel = relativeDay(l.startsAt, now);
+    // «сегодня» / «завтра» — без дня недели; дальше — день недели и дата.
+    const when = rel === "сегодня" || rel === "завтра" ? rel : `${formatShortWeekday(l.startsAt)}, ${formatDayMonth(l.startsAt)}`;
     let title: string;
     let body: string;
     if (l.status === "moved") {
@@ -96,6 +98,14 @@ export function buildTodayCards(input: TodayInput): TodayCard[] {
     const text = `${d.title} ${d.body}`.toLowerCase();
     const twin = text.includes("пересдач") ? retakeCards.find((r) => text.includes(r.stem)) : undefined;
     if (twin) {
+      // Заявление уже подано — не просим подать снова, показываем его статус.
+      const app = text.includes("заявлени") ? input.requests.find((r) => r.type === "retake_application" && r.status !== "returned" && r.status !== "ready") : undefined;
+      if (app) {
+        twin.card.extra = `Заявление на пересдачу подано — ${app.status === "in_progress" ? "учебный офис уже работает с ним" : "ждёт, пока учебный офис возьмёт его в работу"}`;
+        twin.card.href = `/requests/${app.id}`;
+        twin.card.cta = "Открыть заявление";
+        continue;
+      }
       twin.card.extra = `Сначала: ${d.title.toLowerCase()} — срок ${relativeDay(d.dueAt, now)}, ${formatDayMonth(d.dueAt)}`;
       if (d.link) {
         twin.card.href = d.link;
@@ -118,6 +128,7 @@ export function buildTodayCards(input: TodayInput): TodayCard[] {
 
   // 4. Заявки: готова или вернули.
   for (const r of input.requests) {
+    if (r.status !== "returned" && r.status !== "ready") continue; // поданные и в работе — без карточки
     const def = getRequestType(r.type);
     const name = requestName(def, true);
     if (r.status === "returned") {

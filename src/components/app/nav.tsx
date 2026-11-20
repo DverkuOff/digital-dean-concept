@@ -10,7 +10,7 @@ export const NAV = [
   { href: "/schedule", label: "Расписание", icon: CalendarDays, match: ["/schedule"] },
   { href: "/grades", label: "Учёба", icon: GraduationCap, match: ["/grades", "/rating"] },
   { href: "/requests", label: "Заявки", icon: FileText, match: ["/requests"] },
-  { href: "/profile", label: "Профиль", icon: UserRound, match: ["/profile"] },
+  { href: "/profile", label: "Профиль", icon: UserRound, match: ["/profile", "/notifications"] },
 ];
 
 function useActive() {

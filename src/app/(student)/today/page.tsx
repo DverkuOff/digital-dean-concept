@@ -37,6 +37,7 @@ export default async function TodayPage() {
 
   // Пары: оставшиеся сегодня, иначе ближайший учебный день.
   const left = lessons2d.filter((l) => l.endsAt > now && l.startsAt < addDays(today, 1));
+  const passedToday = lessons2d.filter((l) => l.endsAt <= now && l.startsAt >= today && l.startsAt < addDays(today, 1)).length;
   const next = left.length ? null : lessons2d.find((l) => l.startsAt >= addDays(today, 1));
   const nextDayLessons = next ? lessons2d.filter((l) => startOfMskDay(l.startsAt).getTime() === startOfMskDay(next.startsAt).getTime()) : [];
 
@@ -64,7 +65,7 @@ export default async function TodayPage() {
       </section>
 
       <SectionTitle action={<Link href="/schedule" className="text-sm font-medium text-primary">Вся неделя</Link>}>
-        {left.length ? "Пары сегодня" : next ? `Ближайшие пары: ${formatWeekday(next.startsAt)}` : "Пары"}
+        {left.length ? (passedToday ? "Ещё сегодня" : "Пары сегодня") : next ? `Ближайшие пары: ${formatWeekday(next.startsAt)}` : "Пары"}
       </SectionTitle>
       {left.length || nextDayLessons.length ? (
         <div className="space-y-2">

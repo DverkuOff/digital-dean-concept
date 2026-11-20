@@ -20,7 +20,9 @@ export function sql<T = Record<string, unknown>>(text: string, params: unknown[]
 /** id заявки студента по фамилии и типу. */
 export async function requestIdOf(lastName: string, type: string) {
   const rows = await sql<{ id: string }>(
-    `select r.id from request r join student s on s.id = r.student_id where s.last_name = $1 and r.type = $2 order by r.created_at limit 1`,
+    // Только основной персонаж (orlov, а не копии orlov2/orlov3 с той же фамилией).
+    `select r.id from request r join student s on s.id = r.student_id join "user" u on u.id = s.user_id
+     where s.last_name = $1 and r.type = $2 and u.username !~ '[0-9]$' order by r.created_at limit 1`,
     [lastName, type],
   );
   if (!rows[0]) throw new Error(`нет заявки ${type} у ${lastName}`);
