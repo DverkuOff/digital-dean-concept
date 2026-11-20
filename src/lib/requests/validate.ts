@@ -47,7 +47,7 @@ export function validatePayload(def: RequestTypeDef, raw: Record<string, unknown
   for (const f of def.fields) {
     const v = typeof raw[f.name] === "string" ? (raw[f.name] as string).trim() : "";
     if (!v) {
-      if (f.required) errors[f.name] = "Заполните поле";
+      if (f.required) errors[f.name] = f.kind === "select" ? "Выберите вариант" : "Заполните поле";
       continue;
     }
     switch (f.kind) {

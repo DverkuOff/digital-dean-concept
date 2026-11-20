@@ -17,6 +17,15 @@ describe("validatePayload", () => {
     if (!r.ok) expect(Object.keys(r.errors).sort()).toEqual(["copies", "format", "purpose"]);
   });
 
+  it("пустой выпадающий список — «Выберите вариант», пустой текст — «Заполните поле» (ПМИ-2 Н-19)", () => {
+    const r = validatePayload(cert, { purpose: "", copies: "1", format: "" });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.format).toBe("Выберите вариант");
+      expect(r.errors.purpose).toBe("Заполните поле");
+    }
+  });
+
   it("дата окончания не раньше начала", () => {
     const r = validatePayload(absence, { dateFrom: "2026-11-12", dateTo: "2026-11-10", reason: "Болезнь" });
     expect(r.ok).toBe(false);
