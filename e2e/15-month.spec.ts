@@ -61,3 +61,38 @@ test("месяц у Соколовой — её группа, без перес�
   }
   await ctx.close();
 });
+
+// ПМИ-2 (Н-3, Н-4, Н-5): календарь правдоподобен — прошлый месяц не пустой, экзамены и пары не в праздники,
+// переносы не одинаковые каждую неделю.
+const HOLIDAYS = ["01-01", "01-02", "01-03", "01-04", "01-05", "01-06", "01-07", "01-08", "02-23", "03-08", "05-01", "05-09", "06-12", "11-04"];
+test("месяц правдоподобен: прошлый месяц с парами, праздники свободны, изменения разные", async ({ browser }) => {
+  const ctx = await browser.newContext({ storageState: AUTH.b, viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  const notes: string[] = [];
+  for (const m of [-1, 0, 1, 2]) {
+    await page.goto(`/schedule?view=month&m=${m}`);
+    const cells = await page.getByTestId("month-day").evaluateAll((els) =>
+      els.map((e) => ({ d: (e.getAttribute("href") ?? "").slice(-10), label: e.getAttribute("aria-label") ?? "", exam: e.getAttribute("data-exam"), outside: e.className.includes("opacity-40") })),
+    );
+    if (m === -1) {
+      const withLessons = cells.filter((c) => !c.outside && c.label.includes("пар:"));
+      expect(withLessons.length, "в прошлом месяце есть пары").toBeGreaterThan(10);
+    }
+    for (const c of cells) {
+      const holiday = HOLIDAYS.includes(c.d.slice(5));
+      const sunday = new Date(`${c.d}T12:00:00Z`).getUTCDay() === 0;
+      if (holiday) expect(c.label, `${c.d}: в праздник пар нет`).toContain("пар нет");
+      if (c.exam) expect(holiday || sunday, `${c.d}: экзамен не в праздник и не в воскресенье`).toBe(false);
+    }
+    const events = page.getByTestId("month-events");
+    if (await events.count()) {
+      for (const t of await events.locator("li").allTextContents()) if (!/Экзамен|Пересдача/.test(t)) notes.push(t.replace(/\d+/g, "#"));
+    }
+  }
+  // Одна и та же строка (дисциплина, вид, время, причина) — не больше двух раз за четыре месяца.
+  const counts = new Map<string, number>();
+  for (const n of notes) counts.set(n, (counts.get(n) ?? 0) + 1);
+  expect(Math.max(...counts.values())).toBeLessThanOrEqual(2);
+  expect(new Set(notes.map((n) => n.split(":")[0])).size, "изменения по разным дисциплинам").toBeGreaterThanOrEqual(3);
+  await ctx.close();
+});

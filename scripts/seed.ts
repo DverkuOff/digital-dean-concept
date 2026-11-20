@@ -7,6 +7,7 @@ import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as s from "../src/server/db/schema";
 import { ARGON2_OPTIONS } from "../src/server/password-opts";
 import { DAY_MS, addDays, formatDayMonth, formatShortWeekday, formatTime, mskAt, mskDateKey, startOfMskDay, startOfMskWeek } from "../src/lib/dates";
+import { eventAt, eventTimes, examDay, isRuHoliday, lessonRange } from "./seed-calendar";
 
 type DB = NodePgDatabase<typeof s>;
 
@@ -15,16 +16,6 @@ const STAFF_NAME = "Ирина Сафонова";
 // Горизонты дат: демо сбрасывают в день сдачи (22.11), итоги — 28.11. Всё «будущее» живёт 10+ дней.
 const RETAKE_IN_DAYS = 12;
 
-/** Экзамены и пересдачи не ставим на воскресенье и на 1, 2 и 7 января: сдвигаем на следующий день. */
-function examDay(d: Date): Date {
-  let x = d;
-  for (;;) {
-    const k = mskDateKey(x);
-    const sunday = new Date(`${k}T12:00:00Z`).getUTCDay() === 0;
-    if (!sunday && !["01-01", "01-02", "01-07"].includes(k.slice(5))) return x;
-    x = addDays(x, 1);
-  }
-}
 const STAFF_NAMES: Record<string, string> = { "": STAFF_NAME, "2": "Павел Лещинский", "3": "Наталья Гребнева" };
 export const DEMO_LOGINS = { a: "sokolova", b: "orlov", staff: "metodist" } as const;
 /** Наборы персонажей: жюри работает параллельно, у каждого свой «нетронутый» сюжет. */
@@ -283,15 +274,16 @@ export async function seed(db: DB, now = new Date()) {
     );
   }
 
-  /* ── Расписание: от 2 недель назад до 7 недель вперёд ── */
+  /* ── Расписание: с недели 1-го числа прошлого месяца (не раньше 1 сентября) до начала сессии ── */
+  const { from: lessonsFrom, notBefore } = lessonRange(now);
   const lessons: (typeof s.lesson.$inferInsert)[] = [];
-  for (let w = -2; w <= 7; w++) {
-    const monday = addDays(weekStart, w * 7);
+  for (let monday = lessonsFrom; monday.getTime() < sessionStart.getTime(); monday = addDays(monday, 7)) {
     for (const group of [GROUP_A, GROUP_B]) {
       for (const [dow, slot, key, type, room] of [...COMMON_LECTURES, ...GROUP_TPL[group]]) {
         const [h, m] = SLOTS[slot];
         const startsAt = mskAt(addDays(monday, dow), h, m);
-        if (startsAt.getTime() >= sessionStart.getTime()) continue; // во время сессии пар нет
+        // До 1 сентября, в праздники (4 ноября и т. д.) и во время сессии пар нет.
+        if (startsAt.getTime() < notBefore.getTime() || startsAt.getTime() >= sessionStart.getTime() || isRuHoliday(startsAt)) continue;
         lessons.push({
           id: randomUUID(),
           groupCode: group,
@@ -307,61 +299,82 @@ export async function seed(db: DB, now = new Date()) {
   }
   lessons.sort((x, y) => x.startsAt!.getTime() - y.startsAt!.getTime());
 
-  // Изменения у группы Орлова: ближайший семинар переносим на последнюю пару того же дня,
-  // следующая пара меняет аудиторию, ещё одна через несколько дней отменяется.
-  // Плюс по одному переносу в каждую следующую неделю, чтобы демо не устаревало.
+  type L = (typeof lessons)[number];
+  const LESSON_MS = 80 * 60 * 1000;
+  const sameDay = (a: Date, b: Date) => mskDateKey(a) === mskDateKey(b);
+  /** Свободная пара того же дня у группы: сначала позже исходной, иначе раньше. */
+  const freeSlot = (l: L, prefer?: number): [number, number] | null => {
+    const busy = new Set(lessons.filter((x) => x !== l && x.groupCode === l.groupCode && sameDay(x.startsAt!, l.startsAt!)).map((x) => formatTime(x.startsAt!)));
+    const orig = SLOTS.findIndex(([h, m]) => formatTime(mskAt(l.startsAt!, h, m)) === formatTime(l.startsAt!));
+    const idx = [...SLOTS.keys()];
+    const order = [...(prefer !== undefined ? [prefer] : []), ...idx.filter((i) => i > orig), ...idx.filter((i) => i < orig).reverse()];
+    const i = order.find((j) => j !== orig && !busy.has(formatTime(mskAt(l.startsAt!, ...SLOTS[j]))));
+    return i === undefined ? null : SLOTS[i];
+  };
+  /** Изменение объявили заранее: время объявления — в прошлом, до начала пары, в часы работы офиса. */
+  const announced = (l: L, salt: string, daysBefore = 1.5) =>
+    eventAt(now, Math.max(0.1, (now.getTime() - l.startsAt!.getTime()) / DAY_MS + daysBefore), "staff", salt);
+  const applyChange = (l: L, kind: "moved" | "room_changed" | "cancelled", note: string, changedAt: Date, opts: { room?: string; slot?: number } = {}) => {
+    if (kind === "moved") {
+      const target = freeSlot(l, opts.slot);
+      if (!target) return false;
+      l.originalStartsAt = l.startsAt;
+      l.startsAt = mskAt(l.startsAt!, target[0], target[1]);
+      l.endsAt = new Date(l.startsAt.getTime() + LESSON_MS);
+    } else if (kind === "room_changed") {
+      l.originalRoom = l.room;
+      l.room = opts.room ?? "ауд. 1107";
+    }
+    l.status = kind;
+    l.changeNote = note;
+    l.changedAt = changedAt;
+    return true;
+  };
+
+  // Ближайшие изменения у группы Орлова (для «Сегодня»): семинар переносят на последнюю пару того же дня,
+  // следующее языковое занятие меняет аудиторию, ещё одно через несколько дней отменяется.
   const fromToday = (g: string) => lessons.filter((l) => l.groupCode === g && l.startsAt!.getTime() >= today.getTime());
   const bLessons = fromToday(GROUP_B);
   const bUpcoming = bLessons.filter((l) => l.startsAt!.getTime() > now.getTime());
   const firstSeminar = bUpcoming.find((l) => l.type === "seminar" && l.disciplineId === discId.ecmt) ?? bUpcoming.find((l) => l.type === "seminar");
-  if (firstSeminar) {
-    const [h, m] = SLOTS[5];
-    firstSeminar.originalStartsAt = firstSeminar.startsAt;
-    firstSeminar.startsAt = mskAt(firstSeminar.startsAt!, h, m);
-    firstSeminar.endsAt = new Date(firstSeminar.startsAt.getTime() + 80 * 60 * 1000);
-    firstSeminar.status = "moved";
-    firstSeminar.changeNote = "Преподаватель на конференции, семинар перенесён на вечер";
-    firstSeminar.changedAt = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-  }
-  const roomChange = bUpcoming.find((l) => l !== firstSeminar && l.type === "language");
-  if (roomChange) {
-    roomChange.originalRoom = roomChange.room;
-    roomChange.room = "ауд. 3201";
-    roomChange.status = "room_changed";
-    roomChange.changeNote = "В лингафонной аудитории ремонт";
-    roomChange.changedAt = new Date(now.getTime() - 26 * 60 * 60 * 1000);
-  }
-  const cancelled = bLessons.find((l) => l.startsAt!.getTime() > today.getTime() + 3 * DAY_MS && l.disciplineId === discId.worldec && l.type === "seminar");
-  if (cancelled) {
-    cancelled.status = "cancelled";
-    cancelled.changeNote = "Занятие отменено, материал — в электронном курсе";
-    cancelled.changedAt = new Date(now.getTime() - 5 * 60 * 60 * 1000);
-  }
-  // Текущая неделя тоже: в конце недели ближайший семинар уже на следующей, а экран «Неделя» не должен быть пустым.
-  const curWeekEnd = addDays(weekStart, 7).getTime();
-  const hasMoveThisWeek = lessons.some((x) => x.groupCode === GROUP_B && x.status === "moved" && x.startsAt!.getTime() < curWeekEnd);
-  for (let w = hasMoveThisWeek ? 1 : 0; w <= 7; w++) {
-    const weekFrom = addDays(weekStart, w * 7).getTime();
-    const l = bLessons.find((x) => x.startsAt!.getTime() >= weekFrom && x.status === undefined && x.type === "seminar" && x.disciplineId === discId.prob)
-      ?? (w === 0 ? lessons.find((x) => x.groupCode === GROUP_B && x.startsAt!.getTime() >= weekFrom && x.startsAt!.getTime() < curWeekEnd && x.status === undefined && x.type === "seminar") : undefined);
-    if (l) {
-      l.originalStartsAt = l.startsAt;
-      l.startsAt = mskAt(l.startsAt!, SLOTS[4][0], SLOTS[4][1]);
-      l.endsAt = new Date(l.startsAt.getTime() + 80 * 60 * 1000);
-      l.status = "moved";
-      l.changeNote = "Семинар перенесён по просьбе кафедры";
-      l.changedAt = new Date(weekFrom - 3 * DAY_MS);
-    }
-  }
+  if (firstSeminar) applyChange(firstSeminar, "moved", "Преподаватель на конференции, семинар перенесён на вечер", eventAt(now, 0.1, "staff", "move-first"), { slot: 5 });
+  const roomChange = bUpcoming.find((l) => l !== firstSeminar && l.type === "language" && !l.status);
+  if (roomChange) applyChange(roomChange, "room_changed", "В лингафонной аудитории ремонт", eventAt(now, 1.1, "staff", "room-b"), { room: "ауд. 3201" });
+  const cancelled = bLessons.find((l) => !l.status && l.startsAt!.getTime() > today.getTime() + 3 * DAY_MS && l.disciplineId === discId.worldec && l.type === "seminar");
+  if (cancelled) applyChange(cancelled, "cancelled", "Занятие отменено, материал — в электронном курсе", eventAt(now, 0.2, "staff", "cancel-b"));
   // У Соколовой одна смена аудитории в ближайшие дни.
   const aChange = fromToday(GROUP_A).find((l) => l.type === "seminar" && l.startsAt!.getTime() > now.getTime());
-  if (aChange) {
-    aChange.originalRoom = aChange.room;
-    aChange.room = "ауд. 1107";
-    aChange.status = "room_changed";
-    aChange.changeNote = "Аудитория занята под олимпиаду";
-    aChange.changedAt = new Date(now.getTime() - 20 * 60 * 60 * 1000);
+  if (aChange) applyChange(aChange, "room_changed", "Аудитория занята под олимпиаду", eventAt(now, 0.8, "staff", "room-a"), { room: "ауд. 1107" });
+
+  // В текущей неделе у Орлова обязательно есть перенос: в конце недели ближайший семинар уже на следующей,
+  // а экран «Неделя» не должен быть без изменений.
+  const weekOf = (l: L, w: number) => {
+    const a = addDays(weekStart, w * 7).getTime();
+    return l.startsAt!.getTime() >= a && l.startsAt!.getTime() < a + 7 * DAY_MS;
+  };
+  if (!lessons.some((x) => x.groupCode === GROUP_B && x.status === "moved" && weekOf(x, 0))) {
+    const cand = lessons.filter((x) => x.groupCode === GROUP_B && weekOf(x, 0) && !x.status && x.type === "seminar" && x.disciplineId !== discId.pe);
+    const l = cand.find((x) => x.startsAt!.getTime() > now.getTime() && x.disciplineId === discId.prob) ?? cand.find((x) => x.startsAt!.getTime() > now.getTime()) ?? cand.at(-1);
+    if (l) applyChange(l, "moved", "Семинар перенесён по просьбе кафедры", announced(l, "move-week0", 2), { slot: 4 });
   }
+
+  // Остальной семестр: изменение примерно раз в 1–2 недели, разные дисциплины, причины и виды.
+  // В прошлом — пара правдоподобных изменений, чтобы прошлые недели не выглядели стерильными.
+  const PLAN: { w: number; group: string; disc: DiscKey; type: Tpl[3]; kind: "moved" | "room_changed" | "cancelled"; note: string; room?: string }[] = [
+    { w: -5, group: GROUP_A, disc: "worldec", type: "seminar", kind: "room_changed", room: "ауд. 1204", note: "Аудитория занята под конференцию" },
+    { w: -3, group: GROUP_B, disc: "french", type: "language", kind: "cancelled", note: "Преподаватель на больничном, задание — в электронном курсе" },
+    { w: 2, group: GROUP_B, disc: "french", type: "language", kind: "room_changed", room: "ауд. 2210", note: "Аудитория занята под конференцию" },
+    { w: 2, group: GROUP_A, disc: "prob", type: "seminar", kind: "cancelled", note: "Преподаватель в командировке, материал — в электронном курсе" },
+    { w: 4, group: GROUP_B, disc: "worldec", type: "seminar", kind: "moved", note: "Преподаватель в командировке, семинар перенесён" },
+    { w: 4, group: GROUP_A, disc: "french", type: "language", kind: "moved", note: "Перенесено по просьбе кафедры иностранных языков" },
+    { w: 5, group: GROUP_B, disc: "ecmt", type: "seminar", kind: "moved", note: "Замена преподавателя: семинар ведёт доц. Лаптев К. И." },
+  ];
+  PLAN.forEach((p, i) => {
+    const l = lessons.find(
+      (x) => x.groupCode === p.group && weekOf(x, p.w) && !x.status && x.disciplineId === discId[p.disc] && x.type === p.type && (p.w < 0 || x.startsAt!.getTime() > now.getTime()),
+    );
+    if (l) applyChange(l, p.kind, p.note, p.w < 0 ? announced(l, `plan-${i}`) : eventAt(now, 1 + (i % 4), "staff", `plan-${i}`), { room: p.room });
+  });
   for (let i = 0; i < lessons.length; i += 200) await db.insert(s.lesson).values(lessons.slice(i, i + 200));
   // Уведомление о переносе — про тот же ближайший перенос, что и карточка «Сегодня», с датой и временем.
   const nearestMove = lessons
@@ -387,9 +400,8 @@ export async function seed(db: DB, now = new Date()) {
     const touchedByStaff = history.some((h) => h.actor === "staff");
     const seq = await db.execute(sql`select nextval('request_number_seq')::int as n`);
     const num = Number((seq.rows[0] as { n: number }).n);
-    // Время событий разносим по дню (сдвиг 0–5 ч, свой у каждой заявки), иначе все они ровно во время сброса.
-    const shift = ((num * 53) % 300) * 60_000;
-    const at = (daysAgo: number) => new Date(addDays(now, -daysAgo).getTime() - shift);
+    // Время шагов: студент — днём, методист — в часы работы офиса; по порядку, не в одну минуту, не в будущем.
+    const times = eventTimes(now, history, `request-${num}`);
     await db.insert(s.request).values({
       assigneeName: touchedByStaff ? STAFF_NAME : null,
       id,
@@ -398,24 +410,26 @@ export async function seed(db: DB, now = new Date()) {
       type,
       status: last.status,
       payload,
-      createdAt: at(history[0].daysAgo),
-      updatedAt: at(last.daysAgo),
+      createdAt: times[0],
+      updatedAt: times[times.length - 1],
       ...extra,
     });
     await db.insert(s.requestEvent).values(
-      history.map((h) => ({ requestId: id, status: h.status, actor: h.actor, comment: h.comment ?? null, createdAt: at(h.daysAgo) })),
+      history.map((h, i) => ({ requestId: id, status: h.status, actor: h.actor, comment: h.comment ?? null, createdAt: times[i] })),
     );
-    return id;
+    return { id, at: times[times.length - 1] };
   }
 
-  const readyComment = "Справка готова. Электронная версия с подписью отправлена на почту, бумажную можно забрать в учебном офисе, каб. 1107, пн–пт 10:00–17:00";
+  // Формат — «Бумажная в учебном офисе», поэтому и текст про бумажную справку (без «электронная отправлена на почту»).
+  const readyComment = "Справка готова: 2 экземпляра можно забрать в учебном офисе, каб. 1107, пн–пт 10:00–17:00, с паспортом или студенческим";
   const d10 = addDays(today, -7);
   const dm = (d: Date) => formatDayMonth(d);
   const returnReason = `В заявке пропуск только ${dm(d10)}, а справка из поликлиники — с ${dm(d10)} по ${dm(addDays(d10, 2))}. Исправьте дату окончания, чтобы закрыть все пропуски.`;
   const ymd = (d: Date) => new Date(d.getTime() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+  const story: { ready: { id: string; at: Date }; returned: { id: string; at: Date } }[] = [];
   for (const { key, studentA, studentB } of sets) {
     const who = { assigneeName: STAFF_NAMES[key] };
-    await addRequest(studentA, "study_certificate", { purpose: "Отдел социальной защиты населения", copies: "2", format: "Бумажная в учебном офисе" }, [
+    const ready = await addRequest(studentA, "study_certificate", { purpose: "Отдел социальной защиты населения", copies: "2", format: "Бумажная в учебном офисе" }, [
       { status: "submitted", daysAgo: 3, actor: "student" },
       { status: "in_progress", daysAgo: 2, actor: "staff" },
       { status: "ready", daysAgo: 0.6, actor: "staff", comment: readyComment },
@@ -427,7 +441,7 @@ export async function seed(db: DB, now = new Date()) {
       { status: "done", daysAgo: 28, actor: "staff" },
     ], who);
 
-    await addRequest(studentB, "absence_excuse", { dateFrom: ymd(d10), dateTo: ymd(d10), reason: "Болезнь", comment: "Пропустил эконометрику и французский" }, [
+    const returned = await addRequest(studentB, "absence_excuse", { dateFrom: ymd(d10), dateTo: ymd(d10), reason: "Болезнь", comment: "Пропустил эконометрику и французский" }, [
       { status: "submitted", daysAgo: 4, actor: "student" },
       { status: "returned", daysAgo: 1, actor: "staff", comment: returnReason },
     ], { returnReason, returnField: "dateTo", ...who });
@@ -435,6 +449,7 @@ export async function seed(db: DB, now = new Date()) {
       { status: "submitted", daysAgo: 2, actor: "student" },
       { status: "in_progress", daysAgo: 1, actor: "staff" },
     ], who);
+    story.push({ ready, returned });
   }
 
   // Заявки однокурсников — для живой очереди методиста.
@@ -456,25 +471,28 @@ export async function seed(db: DB, now = new Date()) {
 
   /* ── Уведомления ── */
   const n = (studentId: string, v: Omit<typeof s.notification.$inferInsert, "studentId">) => ({ studentId, ...v });
-  for (const { studentA, studentB } of sets) {
+  // Время уведомлений — в часы работы офиса и у каждого своё (раньше все были «в 13:56»).
+  const office = (daysAgo: number, salt: string) => eventAt(now, daysAgo, "staff", salt);
+  for (const [i, { studentA, studentB }] of sets.entries()) {
+    const { ready, returned } = story[i];
     await db.insert(s.notification).values([
-      n(studentA, { kind: "request", title: "Готово: справка об обучении", body: readyComment, link: "/requests", createdAt: addDays(now, -0.6) }),
-      n(studentA, { kind: "deadline", title: "Выбор темы курсовой работы", body: "Согласуйте тему с научным руководителем и отметьте её в кабинете.", dueAt: mskAt(addDays(today, 9), 18), createdAt: addDays(now, -2) }),
-      n(studentA, { kind: "schedule", title: "Смена аудитории", body: "Семинар пройдёт в ауд. 1107: аудитория занята под олимпиаду.", link: "/schedule", createdAt: addDays(now, -0.8) }),
-      n(studentA, { kind: "grade", title: "Выставлены баллы за 2-й срез", body: "Эконометрика: 88 из 100.", link: "/grades", createdAt: addDays(now, -6), readAt: addDays(now, -5) }),
-      n(studentB, { kind: "schedule", title: `Перенос: ${moveName}`, body: moveBody, link: "/schedule", createdAt: new Date(now.getTime() - 2 * 3600 * 1000) }),
-      n(studentB, { kind: "retake", title: "Пересдача 2: Макроэкономика", body: "Пересдача назначена, ауд. 2034. Это последняя попытка перед комиссией.", link: "/rating", dueAt: mskAt(retakeDay, 11), createdAt: addDays(now, -3) }),
-      n(studentB, { kind: "request", title: "Заявку вернули: уважительная причина пропуска", body: returnReason, link: "/requests", createdAt: addDays(now, -1) }),
-      n(studentB, { kind: "deadline", title: "Заявление на пересдачу", body: "Подайте заявление на пересдачу по макроэкономике, чтобы попасть в ведомость.", link: "/requests/new?type=retake_application", dueAt: mskAt(addDays(today, 7), 18), createdAt: addDays(now, -3) }),
-      n(studentB, { kind: "deadline", title: "Выбор темы курсовой работы", body: "Согласуйте тему с научным руководителем и отметьте её в кабинете.", dueAt: mskAt(addDays(today, 9), 18), createdAt: addDays(now, -2), readAt: addDays(now, -1) }),
+      n(studentA, { kind: "request", title: "Готово: справка об обучении", body: readyComment, link: `/requests/${ready.id}`, createdAt: ready.at }),
+      n(studentA, { kind: "deadline", title: "Выбор темы курсовой работы", body: "Согласуйте тему с научным руководителем и отметьте её в кабинете.", dueAt: mskAt(addDays(today, 9), 18), createdAt: office(2, "n-course-a") }),
+      n(studentA, { kind: "schedule", title: "Смена аудитории", body: "Семинар пройдёт в ауд. 1107: аудитория занята под олимпиаду.", link: "/schedule", createdAt: aChange?.changedAt ?? office(0.8, "n-room-a") }),
+      n(studentA, { kind: "grade", title: "Выставлены баллы за 2-й срез", body: "Эконометрика: 88 из 100.", link: "/grades", createdAt: office(6, "n-grade"), readAt: addDays(now, -5) }),
+      n(studentB, { kind: "schedule", title: `Перенос: ${moveName}`, body: moveBody, link: "/schedule", createdAt: nearestMove?.changedAt ?? office(0.1, "n-move") }),
+      n(studentB, { kind: "retake", title: "Пересдача 2: Макроэкономика", body: "Пересдача назначена, ауд. 2034. Это последняя попытка перед комиссией.", link: "/rating", dueAt: mskAt(retakeDay, 11), createdAt: office(3, "n-retake") }),
+      n(studentB, { kind: "request", title: "Заявку вернули: уважительная причина пропуска", body: returnReason, link: `/requests/${returned.id}`, createdAt: returned.at }),
+      n(studentB, { kind: "deadline", title: "Заявление на пересдачу", body: "Подайте заявление на пересдачу по макроэкономике, чтобы попасть в ведомость.", link: "/requests/new?type=retake_application", dueAt: mskAt(addDays(today, 7), 18), createdAt: office(2.9, "n-retake-app") }),
+      n(studentB, { kind: "deadline", title: "Выбор темы курсовой работы", body: "Согласуйте тему с научным руководителем и отметьте её в кабинете.", dueAt: mskAt(addDays(today, 9), 18), createdAt: office(2, "n-course-b"), readAt: addDays(now, -1) }),
     ]);
   }
 
   await db.insert(s.news).values([
-    { title: "Опубликовано расписание зимней сессии", body: "Экзамены начнутся через пять недель. Расписание уже в разделе «Учёба» и в расписании на месяц.", important: true, publishedAt: addDays(now, -0.5) },
-    { title: "Запись на третий иностранный язык", body: "Студенты с рейтингом от 75 могут подать заявку на третий язык до конца месяца. Условия — в разделе «Рейтинг».", faculty: FACULTY, publishedAt: addDays(now, -3) },
-    { title: "Учебный офис: часы приёма", body: "Учебный офис принимает студентов пн–пт с 10:00 до 17:00, перерыв 13:00–14:00. Справки можно заказать онлайн в разделе «Заявки».", publishedAt: addDays(now, -6) },
-    { title: "Стипендиальная комиссия", body: "Комиссия рассмотрит заявления на повышенную стипендию после зимней сессии. Следите за рейтингом.", faculty: FACULTY, publishedAt: addDays(now, -9) },
+    { title: "Опубликовано расписание зимней сессии", body: "Экзамены начнутся через пять недель. Расписание уже в разделе «Учёба» и в расписании на месяц.", important: true, publishedAt: office(0.5, "news-1") },
+    { title: "Запись на третий иностранный язык", body: "Студенты с рейтингом от 75 могут подать заявку на третий язык до конца месяца. Условия — в разделе «Рейтинг».", faculty: FACULTY, publishedAt: office(3, "news-2") },
+    { title: "Учебный офис: часы приёма", body: "Учебный офис принимает студентов пн–пт с 10:00 до 17:00, перерыв 13:00–14:00. Справки можно заказать онлайн в разделе «Заявки».", publishedAt: office(6, "news-3") },
+    { title: "Стипендиальная комиссия", body: "Комиссия рассмотрит заявления на повышенную стипендию после зимней сессии. Следите за рейтингом.", faculty: FACULTY, publishedAt: office(9, "news-4") },
   ]);
 
   return { studentA: sets[0].studentA, studentB: sets[0].studentB };
