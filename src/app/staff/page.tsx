@@ -90,7 +90,9 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
                         <StatusBadge status={r.status} className="md:hidden" />
                       </div>
                       <p className="text-sm text-muted-foreground md:text-foreground">
-                        {r.studentName} <span className="text-muted-foreground">· {r.groupCode}</span>
+                        {r.studentName}
+                        {/\d$/.test(r.studentLogin ?? "") && <span className="text-muted-foreground"> (копия {r.studentLogin!.slice(-1)})</span>}{" "}
+                        <span className="text-muted-foreground">· {r.groupCode}</span>
                       </p>
                       <p className="text-xs text-muted-foreground md:text-sm">
                         <span className="md:hidden">№ {r.number} · подана </span>{formatDateTime(r.createdAt)}

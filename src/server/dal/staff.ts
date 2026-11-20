@@ -1,7 +1,7 @@
 import "server-only";
 import { asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
-import { request, requestMessage, student } from "../db/schema";
+import { request, requestMessage, student, user } from "../db/schema";
 import { requireStaff } from "../session";
 import type { RequestStatus } from "@/lib/requests/catalog";
 
@@ -28,9 +28,12 @@ export async function listQueue(filter: "active" | "all" | RequestStatus) {
       updatedAt: request.updatedAt,
       studentName: sql<string>`${student.lastName} || ' ' || ${student.firstName}`,
       groupCode: student.groupCode,
+      // Логин нужен, чтобы отличать копии демо-персонажей (orlov2, orlov3) в общей очереди.
+      studentLogin: user.username,
     })
     .from(request)
     .innerJoin(student, eq(student.id, request.studentId))
+    .leftJoin(user, eq(user.id, student.userId))
     .where(where)
     .orderBy(
       sql`case ${request.status} when 'submitted' then 0 when 'in_progress' then 1 when 'returned' then 2 when 'ready' then 3 else 4 end`,
