@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildIcs, escapeText, foldLine, icsDate, type IcsLesson } from "./ics";
+import { buildIcs, calendarHost, escapeText, foldLine, icsDate, type IcsLesson } from "./ics";
 
 const base: IcsLesson = {
   id: "l1",
@@ -46,10 +46,24 @@ describe("ics", () => {
     });
     expect(ics.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
     expect(ics.trimEnd().endsWith("END:VCALENDAR")).toBe(true);
-    expect(ics).toContain("SUMMARY:Перенос: Эконометрика (семинар)");
+    expect(ics).toContain("SUMMARY:Перенос: Эконометрика\\, семинар");
     expect(ics).toContain("STATUS:CANCELLED");
     expect(ics).toContain("UID:l1@orientir.test");
     expect(ics.replace(/\r\n /g, "")).toContain("данные вымышлены");
     expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(2);
+  });
+
+  // ПМИ-2 (Д-10): за прокси приложение слушает 0.0.0.0:3000, и UID получался «…@0.0.0.0:3000».
+  it("хост для UID — из BETTER_AUTH_URL, иначе из заголовков прокси, но не 0.0.0.0", () => {
+    expect(calendarHost({ authUrl: "https://orientir.example.ru", forwardedHost: null, host: "0.0.0.0:3000", urlHost: "0.0.0.0:3000" })).toBe("orientir.example.ru");
+    expect(calendarHost({ authUrl: undefined, forwardedHost: "orientir.example.ru", host: "0.0.0.0:3000", urlHost: "0.0.0.0:3000" })).toBe("orientir.example.ru");
+    expect(calendarHost({ authUrl: "not a url", forwardedHost: null, host: "demo.local:3100", urlHost: "0.0.0.0:3000" })).toBe("demo.local:3100");
+    expect(calendarHost({ authUrl: undefined, forwardedHost: null, host: "0.0.0.0:3000", urlHost: "0.0.0.0:3000" })).toBe("orientir.invalid");
+  });
+
+  it("в названии события нет двойных скобок", () => {
+    const ics = buildIcs({ calName: "x", now, host: "h", lessons: [{ ...base, title: "Английский язык (3 сем.)", type: "language" }] });
+    expect(ics).toContain("SUMMARY:Английский язык (3 сем.)\\, язык");
+    expect(ics).not.toContain(") (");
   });
 });

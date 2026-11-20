@@ -51,6 +51,22 @@ export function icsDate(d: Date): string {
 
 const fmtHm = new Intl.DateTimeFormat("ru-RU", { timeZone: "Europe/Moscow", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
+/**
+ * Хост для UID событий. За прокси `req.url` — это внутренний адрес контейнера (0.0.0.0:3000),
+ * поэтому сначала публичный адрес из BETTER_AUTH_URL, потом заголовки прокси.
+ */
+export function calendarHost(src: { authUrl: string | undefined; forwardedHost: string | null; host: string | null; urlHost: string }): string {
+  const ok = (h: string | null | undefined): h is string => !!h && /^[a-z0-9.-]+(:\d+)?$/i.test(h) && !/^(0\.0\.0\.0|127\.|localhost|\[)/i.test(h);
+  let fromEnv: string | null = null;
+  try {
+    fromEnv = src.authUrl ? new URL(src.authUrl).host : null;
+  } catch {
+    fromEnv = null;
+  }
+  const forwarded = src.forwardedHost?.split(",")[0].trim() ?? null;
+  return [fromEnv, forwarded, src.host, src.urlHost].find(ok) ?? "orientir.invalid";
+}
+
 export function buildIcs(opts: { calName: string; lessons: IcsLesson[]; now: Date; host: string }): string {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
@@ -66,7 +82,8 @@ export function buildIcs(opts: { calName: string; lessons: IcsLesson[]; now: Dat
   ];
   for (const l of opts.lessons) {
     const notes: string[] = [`${TYPE[l.type]}, ${l.teacher}`];
-    let summary = `${l.title} (${TYPE[l.type]})`;
+    // «Английский язык (3 сем.), язык», а не «… (3 сем.) (язык)».
+    let summary = `${l.title}, ${TYPE[l.type]}`;
     if (l.status === "moved" && l.originalStartsAt) {
       summary = `Перенос: ${summary}`;
       notes.push(`Перенесено с ${fmtHm.format(l.originalStartsAt)}`);
