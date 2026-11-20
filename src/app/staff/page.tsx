@@ -81,7 +81,7 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
             const late = def && ["submitted", "in_progress"].includes(r.status) && now > addBusinessDays(r.createdAt, def.typicalDays);
             return (
               <li key={r.id} id={`r-${r.id}`} data-testid="queue-item" data-request-id={r.id}>
-                <details className="group rounded-xl bg-card ring-1 ring-foreground/10 open:ring-primary/40" open={r.status === "submitted" && rows.length <= 3}>
+                <details className="group rounded-xl bg-card ring-1 ring-foreground/10 open:ring-primary/40">
                   <summary className="flex cursor-pointer list-none gap-3 p-3.5 md:grid md:grid-cols-[6.5rem_minmax(0,1.4fr)_minmax(0,1fr)_9.5rem_8.5rem_1rem] md:items-center md:gap-4 md:px-4 md:py-3">
                     {/* Телефон: карточка. Компьютер: строка таблицы — методист работает за компьютером. */}
                     <span className="hidden text-sm tabular-nums text-muted-foreground md:block">{r.number}</span>
