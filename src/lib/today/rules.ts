@@ -15,7 +15,17 @@ export type TodayInput = {
     discipline: string;
   }[];
   retakes: { id: string; kind: string; scheduledAt: Date; room: string | null; discipline: string }[];
-  requests: { id: string; type: string; status: string; updatedAt: Date; returnReason: string | null; staffComment: string | null }[];
+  requests: {
+    id: string;
+    number: string;
+    type: string;
+    status: string;
+    /** Дисциплина из заявления на пересдачу (payload.discipline). */
+    discipline?: string | null;
+    updatedAt: Date;
+    returnReason: string | null;
+    staffComment: string | null;
+  }[];
   deadlines: { id: string; title: string; body: string; link: string | null; dueAt: Date }[];
   news: { id: string; title: string; body: string; publishedAt: Date }[];
   dismissed: Set<string>;
@@ -37,6 +47,15 @@ export type TodayCard = {
 export const MAX_CARDS = 5;
 
 const RETAKE_LABEL: Record<string, string> = { retake1: "Пересдача 1", retake2: "Пересдача 2", commission: "Комиссия" };
+
+/** Что сказать о заявлении на пересдачу внутри карточки пересдачи. */
+const APP_STATUS_TEXT: Record<string, string> = {
+  submitted: "Заявление на пересдачу подано — ждёт, пока учебный офис возьмёт его в работу",
+  in_progress: "Заявление на пересдачу подано — учебный офис уже работает с ним",
+  returned: "Заявление вернули — исправьте и подайте снова",
+  ready: "Заявление принято: вы в ведомости пересдачи",
+  done: "Заявление принято: вы в ведомости пересдачи",
+};
 
 export function buildTodayCards(input: TodayInput): TodayCard[] {
   const { now } = input;
@@ -94,16 +113,22 @@ export function buildTodayCards(input: TodayInput): TodayCard[] {
 
   // 3. Дедлайны. Схлопывание дублей: дедлайн про пересдачу того же предмета
   // не становится отдельной карточкой, а дописывается в карточку пересдачи.
+  const merged = new Set<string>(); // заявления, которые уже показаны внутри карточки пересдачи
   for (const d of input.deadlines) {
     const text = `${d.title} ${d.body}`.toLowerCase();
     const twin = text.includes("пересдач") ? retakeCards.find((r) => text.includes(r.stem)) : undefined;
     if (twin) {
-      // Заявление уже подано — не просим подать снова, показываем его статус.
-      const app = text.includes("заявлени") ? input.requests.find((r) => r.type === "retake_application" && r.status !== "returned" && r.status !== "ready") : undefined;
+      // Заявление уже есть (любой статус, кроме «отклонено») — не просим подать снова, показываем его статус.
+      const app = text.includes("заявлени")
+        ? input.requests
+            .filter((r) => r.type === "retake_application" && r.status !== "rejected" && (!r.discipline || r.discipline.toLowerCase().includes(twin.stem)))
+            .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0]
+        : undefined;
       if (app) {
-        twin.card.extra = `Заявление на пересдачу подано — ${app.status === "in_progress" ? "учебный офис уже работает с ним" : "ждёт, пока учебный офис возьмёт его в работу"}`;
+        twin.card.extra = APP_STATUS_TEXT[app.status] ?? APP_STATUS_TEXT.submitted;
         twin.card.href = `/requests/${app.id}`;
-        twin.card.cta = "Открыть заявление";
+        twin.card.cta = app.status === "returned" ? "Исправить" : "Открыть заявление";
+        merged.add(app.id);
         continue;
       }
       twin.card.extra = `Сначала: ${d.title.toLowerCase()} — срок ${relativeDay(d.dueAt, now)}, ${formatDayMonth(d.dueAt)}`;
@@ -129,8 +154,11 @@ export function buildTodayCards(input: TodayInput): TodayCard[] {
   // 4. Заявки: готова или вернули.
   for (const r of input.requests) {
     if (r.status !== "returned" && r.status !== "ready") continue; // поданные и в работе — без карточки
+    if (merged.has(r.id)) continue; // уже сказано в карточке пересдачи
     const def = getRequestType(r.type);
-    const name = requestName(def, true);
+    // Две заявки одного вида в одном статусе (две готовые справки) различаем номером.
+    const twins = input.requests.filter((x) => x.type === r.type && x.status === r.status && !merged.has(x.id)).length;
+    const name = requestName(def, true) + (twins > 1 ? ` № ${r.number}` : "");
     if (r.status === "returned") {
       cards.push({
         key: `request:${r.id}:returned:${r.updatedAt.getTime()}`,

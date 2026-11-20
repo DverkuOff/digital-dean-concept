@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import type { FieldDef, RequestTypeDef } from "@/lib/requests/catalog";
 import type { FormState } from "@/server/actions/requests";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,14 @@ export function RequestForm({ def, action, initial = {}, requestId, highlight, s
       {state.error && (
         <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}
+          {state.errorLink && (
+            <>
+              {" "}
+              <Link href={state.errorLink.href} className="font-medium underline underline-offset-2">
+                {state.errorLink.label}
+              </Link>
+            </>
+          )}
         </p>
       )}
       {state.ok && (

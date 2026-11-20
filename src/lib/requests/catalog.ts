@@ -165,6 +165,39 @@ export const STAFF_ACTION_LABEL: Partial<Record<RequestStatus, string>> = {
   rejected: "Отклонить",
 };
 
+/** Заявки, по которым не выдают документ: «Выдана» и «забрать с паспортом» для них звучат странно. */
+const NOT_A_DOCUMENT = ["retake_application", "consultation", "absence_excuse"];
+
+/** Подпись кнопки методиста с учётом вида заявки: у заявления и консультации нечего «выдавать». */
+export function staffActionLabel(to: RequestStatus, type: string): string {
+  if (to === "done" && NOT_A_DOCUMENT.includes(type)) return "Закрыть заявку";
+  return STAFF_ACTION_LABEL[to] ?? to;
+}
+
+/** Текст «Готово» по умолчанию (если методист ничего не написал) — по виду заявки. */
+export function defaultReadyComment(type: string, payload: Record<string, string>): string {
+  switch (type) {
+    case "consultation":
+      return "Консультация согласована: время и аудиторию преподаватель подтвердит в уведомлении";
+    case "retake_application":
+      return payload.variant === "Индивидуальный график сдачи"
+        ? "Заявление принято: индивидуальный график согласуем с кафедрой, даты придут в уведомлении"
+        : "Заявление принято: вы в ведомости пересдачи. Дата и аудитория — в расписании и в разделе «Рейтинг»";
+    case "absence_excuse":
+      return "Уважительная причина принята: пропуски отмечены в журнале, допуск к сессии сохраняется";
+    default:
+      return payload.format === "Электронная с электронной подписью"
+        ? "Документ с электронной подписью отправлен на почту и доступен в учебном офисе"
+        : "Документ готов. Забрать в учебном офисе, каб. 1107, пн–пт 10:00–17:00, с паспортом";
+  }
+}
+
+/** Подсказка статуса для студента: у «Готова» — без «документ готов», если документа нет. */
+export function statusHint(status: RequestStatus, type: string): string {
+  if (status === "ready" && NOT_A_DOCUMENT.includes(type)) return "Готово — подробности ниже";
+  return STATUS_META[status].hint;
+}
+
 /** Статусы, для которых методист обязан написать комментарий. */
 export const COMMENT_REQUIRED: RequestStatus[] = ["returned", "rejected"];
 

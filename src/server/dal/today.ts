@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, gte, inArray, isNull, lt, or } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import { discipline, dismissedCard, examAttempt, lesson, news, notification, request } from "../db/schema";
 import { requireStudent } from "../session";
@@ -47,13 +47,26 @@ export async function getTodayCards(now = new Date()) {
         ),
       ),
     db
-      .select({ id: request.id, type: request.type, status: request.status, updatedAt: request.updatedAt, returnReason: request.returnReason, staffComment: request.staffComment })
+      .select({
+        id: request.id,
+        number: request.number,
+        type: request.type,
+        status: request.status,
+        discipline: sql<string | null>`${request.payload}->>'discipline'`,
+        updatedAt: request.updatedAt,
+        returnReason: request.returnReason,
+        staffComment: request.staffComment,
+      })
       .from(request)
       .where(
         and(
           eq(request.studentId, me.id),
-          // Поданное и взятое в работу заявление на пересдачу нужно, чтобы «Сегодня» не просила подать его снова.
-          or(inArray(request.status, ["returned", "ready"]), and(eq(request.type, "retake_application"), inArray(request.status, ["submitted", "in_progress"]))),
+          // Заявление на пересдачу в любом статусе, кроме «отклонено», нужно, чтобы «Сегодня» не просила подать его снова
+          // (в том числе готовое и закрытое — находка ПМИ-2 Н-2).
+          or(
+            inArray(request.status, ["returned", "ready"]),
+            and(eq(request.type, "retake_application"), inArray(request.status, ["submitted", "in_progress", "done"])),
+          ),
         ),
       ),
     db

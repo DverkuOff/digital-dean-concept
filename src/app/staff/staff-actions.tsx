@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-type Props = { requestId: string; transitions: RequestStatus[]; fields: { name: string; label: string }[] };
+type Props = { requestId: string; transitions: RequestStatus[]; labels: Partial<Record<RequestStatus, string>>; fields: { name: string; label: string }[] };
 
-export function StaffActions({ requestId, transitions, fields }: Props) {
+export function StaffActions({ requestId, transitions, labels, fields }: Props) {
   const [state, action, pending] = useActionState<StaffState, FormData>(changeStatusAction, {});
   const [mode, setMode] = useState<RequestStatus | null>(null);
   const positive = transitions.filter((t) => !COMMENT_REQUIRED.includes(t));
@@ -22,18 +22,19 @@ export function StaffActions({ requestId, transitions, fields }: Props) {
           <input type="hidden" name="requestId" value={requestId} />
           {positive.map((t) => (
             <Button key={t} type="submit" name="to" value={t} disabled={pending}>
-              {STAFF_ACTION_LABEL[t]}
+              {labels[t] ?? STAFF_ACTION_LABEL[t]}
             </Button>
           ))}
           {negative.map((t) => (
             <Button key={t} type="button" variant={t === "rejected" ? "ghost" : "outline"} onClick={() => setMode(t)}>
-              {STAFF_ACTION_LABEL[t]}
+              {labels[t] ?? STAFF_ACTION_LABEL[t]}
             </Button>
           ))}
         </form>
       )}
       {mode && (
-        <form action={action} className="space-y-3 rounded-xl bg-muted/50 p-3">
+        // noValidate: пустую причину проверяет сервер и отвечает текстом приложения, а не браузерной подсказкой.
+        <form action={action} className="space-y-3 rounded-xl bg-muted/50 p-3" noValidate>
           <input type="hidden" name="requestId" value={requestId} />
           <input type="hidden" name="to" value={mode} />
           {mode === "returned" && fields.length > 0 && (
@@ -55,7 +56,7 @@ export function StaffActions({ requestId, transitions, fields }: Props) {
           </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={pending}>
-              {STAFF_ACTION_LABEL[mode]}
+              {labels[mode] ?? STAFF_ACTION_LABEL[mode]}
             </Button>
             <Button type="button" variant="ghost" onClick={() => setMode(null)}>
               Отмена

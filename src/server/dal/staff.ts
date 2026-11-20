@@ -20,6 +20,7 @@ export async function listQueue(filter: "active" | "all" | RequestStatus) {
       status: request.status,
       payload: request.payload,
       returnReason: request.returnReason,
+      returnField: request.returnField,
       staffComment: request.staffComment,
       assigneeName: request.assigneeName,
       // Последнее сообщение в переписке — от студента: ждёт ответа учебного офиса.

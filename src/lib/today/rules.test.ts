@@ -36,7 +36,7 @@ describe("buildTodayCards", () => {
     const input = empty();
     input.retakes.push({ id: "r1", kind: "retake2", scheduledAt: h(24 * 9), room: "ауд. 2034", discipline: "Макроэкономика" });
     input.deadlines.push({ id: "d1", title: "Заявление на пересдачу", body: "Подайте заявление на пересдачу по макроэкономике", link: "/requests/new?type=retake_application", dueAt: h(24 * 5) });
-    input.requests.push({ id: "q1", type: "retake_application", status: "submitted", updatedAt: h(-1), returnReason: null, staffComment: null });
+    input.requests.push({ id: "q1", number: "2026-01018", type: "retake_application", status: "submitted", discipline: "Макроэкономика", updatedAt: h(-1), returnReason: null, staffComment: null });
     const cards = buildTodayCards(input);
     expect(cards).toHaveLength(1);
     expect(cards[0].extra).toContain("подано");
@@ -44,9 +44,57 @@ describe("buildTodayCards", () => {
     expect(cards[0].cta).toBe("Открыть заявление");
   });
 
+  // ПМИ-2 (Н-2): готовое заявление — «Сегодня» снова просила его подать, и по кнопке создавался дубль.
+  const withApp = (status: string, discipline = "Макроэкономика") => {
+    const input = empty();
+    input.retakes.push({ id: "r1", kind: "retake2", scheduledAt: h(24 * 9), room: "ауд. 2034", discipline: "Макроэкономика" });
+    input.deadlines.push({ id: "d1", title: "Заявление на пересдачу", body: "Подайте заявление на пересдачу по макроэкономике", link: "/requests/new?type=retake_application", dueAt: h(24 * 5) });
+    input.requests.push({ id: "q1", number: "2026-01018", type: "retake_application", status, discipline, updatedAt: h(-1), returnReason: "Уточните вариант", staffComment: "Заявление принято" });
+    return buildTodayCards(input);
+  };
+
+  it.each(["ready", "done"])("заявление на пересдачу %s — «вы в ведомости», без кнопки «Подать заявление» и без отдельной карточки", (status) => {
+    const cards = withApp(status);
+    const retake = cards.find((c) => c.kind === "retake")!;
+    expect(retake.extra).toBe("Заявление принято: вы в ведомости пересдачи");
+    expect(retake.href).toBe("/requests/q1");
+    expect(retake.cta).toBe("Открыть заявление");
+    expect(cards.some((c) => c.cta === "Подать заявление")).toBe(false);
+    expect(cards.filter((c) => c.kind === "request")).toHaveLength(0);
+  });
+
+  it("заявление вернули — «исправьте», ссылка на заявку", () => {
+    const cards = withApp("returned");
+    const retake = cards.find((c) => c.kind === "retake")!;
+    expect(retake.extra).toContain("Заявление вернули — исправьте");
+    expect(retake.href).toBe("/requests/q1");
+    expect(retake.cta).toBe("Исправить");
+    expect(cards.some((c) => c.cta === "Подать заявление")).toBe(false);
+  });
+
+  it("в работе — «учебный офис уже работает»; отклонённое и по другой дисциплине не считаются", () => {
+    expect(withApp("in_progress").find((c) => c.kind === "retake")!.extra).toContain("уже работает");
+    expect(withApp("rejected").find((c) => c.kind === "retake")!.cta).toBe("Подать заявление");
+    expect(withApp("ready", "Эконометрика").find((c) => c.kind === "retake")!.cta).toBe("Подать заявление");
+  });
+
+  // ПМИ-2 (Д-11): две готовые справки одного вида — две карточки, но различимые по номеру.
+  it("две готовые заявки одного вида различаются номером в заголовке", () => {
+    const input = empty();
+    input.requests.push({ id: "a", number: "2026-01001", type: "study_certificate", status: "ready", updatedAt: h(-5), returnReason: null, staffComment: "Забрать" });
+    input.requests.push({ id: "b", number: "2026-01020", type: "study_certificate", status: "ready", updatedAt: h(-1), returnReason: null, staffComment: null });
+    const titles = buildTodayCards(input).map((c) => c.title);
+    expect(titles).toHaveLength(2);
+    expect(new Set(titles).size).toBe(2);
+    expect(titles.join(" ")).toContain("№ 2026-01020");
+    // Одна заявка — без номера в заголовке.
+    input.requests.pop();
+    expect(buildTodayCards(input)[0].title).toBe("Готово: справка об обучении");
+  });
+
   it("«понял» скрывает карточку по ключу, новый возврат той же заявки — новый ключ", () => {
     const input = empty();
-    input.requests.push({ id: "q1", type: "absence_excuse", status: "returned", updatedAt: h(-2), returnReason: "Даты", staffComment: null });
+    input.requests.push({ id: "q1", number: "2026-01003", type: "absence_excuse", status: "returned", updatedAt: h(-2), returnReason: "Даты", staffComment: null });
     const [c] = buildTodayCards(input);
     input.dismissed.add(c.key);
     expect(buildTodayCards(input)).toHaveLength(0);

@@ -8,6 +8,7 @@ import { isUuid } from "../dal/ids";
 import {
   COMMENT_REQUIRED,
   STAFF_TRANSITIONS,
+  defaultReadyComment,
   STATUS_META,
   getRequestType,
   requestName,
@@ -36,15 +37,8 @@ export async function changeStatusAction(_prev: StaffState, fd: FormData): Promi
   if (COMMENT_REQUIRED.includes(to) && !comment) return { error: "Напишите причину — студент увидит её в заявке" };
 
   const def = getRequestType(row.type);
-  // «Готово» без комментария: подставляем, где получить документ.
-  const finalComment =
-    to === "ready" && !comment
-      ? row.type === "consultation"
-        ? "Консультация согласована: время и аудиторию преподаватель подтвердит в уведомлении"
-        : row.payload.format === "Электронная с электронной подписью"
-        ? "Документ с электронной подписью отправлен на почту и доступен в учебном офисе"
-        : "Документ готов. Забрать в учебном офисе, каб. 1107, пн–пт 10:00–17:00, с паспортом"
-      : comment;
+  // «Готово» без комментария: подставляем текст по виду заявки (где забрать документ, что значит готовое заявление).
+  const finalComment = to === "ready" && !comment ? defaultReadyComment(row.type, row.payload) : comment;
   const field = def?.fields.find((f) => f.name === returnField)?.name ?? null;
 
   // Переход — одним UPDATE с условием на текущий статус: если два методиста нажали одновременно,

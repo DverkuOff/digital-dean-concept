@@ -10,7 +10,7 @@ import { RequestTimeline } from "@/components/app/request-timeline";
 import { RequestTransparency } from "@/components/app/request-transparency";
 import { RequestThread } from "@/components/app/request-thread";
 import { askOfficeAction } from "@/server/actions/messages";
-import { displayFieldValue, getRequestType, STATUS_META } from "@/lib/requests/catalog";
+import { displayFieldValue, getRequestType, statusHint } from "@/lib/requests/catalog";
 
 export const metadata: Metadata = { title: "Заявка" };
 
@@ -41,7 +41,7 @@ export default async function RequestPage({ params, searchParams }: { params: Pr
         <StatusBadge status={r.status} className="mt-1" />
       </div>
       <p className="text-sm text-muted-foreground">
-        № {r.number} · {STATUS_META[r.status].hint}
+        № {r.number} · {statusHint(r.status, r.type)}
       </p>
 
       {def && !["done", "rejected"].includes(r.status) && (

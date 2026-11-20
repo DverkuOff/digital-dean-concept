@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { StatusBadge } from "@/components/app/status-badge";
 import { RequestIcon } from "@/components/app/request-icon";
 import { StaffActions } from "./staff-actions";
-import { displayFieldValue, getRequestType, STAFF_TRANSITIONS, type RequestStatus } from "@/lib/requests/catalog";
+import { displayFieldValue, getRequestType, staffActionLabel, STAFF_TRANSITIONS, type RequestStatus } from "@/lib/requests/catalog";
 import { addBusinessDays, formatDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +77,7 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
           {rows.map((r) => {
             const def = getRequestType(r.type);
             const can = STAFF_TRANSITIONS[r.status];
+            const returnFieldLabel = def?.fields.find((x) => x.name === r.returnField)?.label;
             const late = def && ["submitted", "in_progress"].includes(r.status) && now > addBusinessDays(r.createdAt, def.typicalDays);
             return (
               <li key={r.id} id={`r-${r.id}`} data-testid="queue-item" data-request-id={r.id}>
@@ -132,12 +133,24 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
                         ))}
                     </dl>
                     {r.status === "returned" && r.returnReason && (
-                      <p className="mb-3 rounded-lg bg-warning/15 px-3 py-2 text-sm">Ждём исправления от студента: {r.returnReason}</p>
+                      <div className="mb-3 space-y-0.5 rounded-lg bg-warning/15 px-3 py-2 text-sm" data-testid="return-info">
+                        <p>Причина возврата: {r.returnReason}</p>
+                        <p className="text-muted-foreground">
+                          {returnFieldLabel ? (
+                            <>
+                              Студента попросили исправить: <b className="font-medium text-foreground">{returnFieldLabel}</b>
+                            </>
+                          ) : (
+                            "Поле не отмечено — студент исправляет по причине"
+                          )}
+                        </p>
+                      </div>
                     )}
                     {can.length > 0 ? (
                       <StaffActions
                         requestId={r.id}
                         transitions={can}
+                        labels={Object.fromEntries(can.map((t) => [t, staffActionLabel(t, r.type)]))}
                         fields={(def?.fields ?? []).map((x) => ({ name: x.name, label: x.label }))}
                       />
                     ) : (

@@ -16,6 +16,9 @@ import { validatePayload } from "@/lib/requests/validate";
 const MAX_ACTIVE_REQUESTS = 10;
 const LIMIT = "limit"; // признак «лимит исчерпан» из транзакции подачи
 const ACTIVE_STATUSES = ["submitted", "in_progress", "returned", "ready"] as const;
+/** Заявление на пересдачу по дисциплине одно: и активное, и уже принятое (done) — второе не нужно. */
+const RETAKE_APP_TAKEN = [...ACTIVE_STATUSES, "done"] as const;
+const DUPLICATE = "duplicate";
 
 async function activeCount(studentId: string) {
   const [row] = await db
@@ -25,7 +28,14 @@ async function activeCount(studentId: string) {
   return row?.n ?? 0;
 }
 
-export type FormState = { ok?: boolean; error?: string; fieldErrors?: Record<string, string>; values?: Record<string, string> };
+export type FormState = {
+  ok?: boolean;
+  error?: string;
+  /** Ссылка к ошибке формы (например, на уже поданное заявление). */
+  errorLink?: { href: string; label: string };
+  fieldErrors?: Record<string, string>;
+  values?: Record<string, string>;
+};
 
 function formValues(fd: FormData): Record<string, string> {
   const out: Record<string, string> = {};
@@ -47,11 +57,31 @@ export async function createRequestAction(_prev: FormState, fd: FormData): Promi
   if ((await activeCount(me.id)) >= MAX_ACTIVE_REQUESTS) return limitError;
 
   let id = "";
+  let duplicate: { id: string; number: string } | null = null;
   for (let attempt = 0; attempt < 3 && !id; attempt++) {
     try {
       id = await db.transaction(async (tx) => {
         // Подсчёт и вставка под блокировкой студента: параллельные подачи не обойдут лимит.
         await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${me.id}))`);
+        // Заявление на пересдачу по той же дисциплине уже есть (в том числе поданное из рейтинга) — второе не создаём.
+        if (def.key === "retake_application") {
+          const [dup] = await tx
+            .select({ id: request.id, number: request.number })
+            .from(request)
+            .where(
+              and(
+                eq(request.studentId, me.id),
+                eq(request.type, "retake_application"),
+                inArray(request.status, [...RETAKE_APP_TAKEN]),
+                sql`lower(trim(${request.payload}->>'discipline')) = lower(${check.data.discipline ?? ""})`,
+              ),
+            )
+            .limit(1);
+          if (dup) {
+            duplicate = dup;
+            return DUPLICATE;
+          }
+        }
         const [cnt] = await tx
           .select({ n: sql<number>`count(*)::int` })
           .from(request)
@@ -70,6 +100,10 @@ export async function createRequestAction(_prev: FormState, fd: FormData): Promi
     }
   }
   if (id === LIMIT) return limitError;
+  if (id === DUPLICATE && duplicate) {
+    const d: { id: string; number: string } = duplicate;
+    return { error: `Заявление по этой дисциплине уже подано: № ${d.number}.`, errorLink: { href: `/requests/${d.id}`, label: "Открыть заявление" }, values };
+  }
 
   revalidatePath("/requests");
   redirect(`/requests/${id}?created=1`);
@@ -154,7 +188,7 @@ export async function quickRetakeRequestAction(disciplineId: string, kind: "cons
         and(
           eq(request.studentId, me.id),
           eq(request.type, kind),
-          inArray(request.status, [...ACTIVE_STATUSES]),
+          inArray(request.status, kind === "retake_application" ? [...RETAKE_APP_TAKEN] : [...ACTIVE_STATUSES]),
           sql`${request.payload}->>'discipline' = ${debt.name}`,
         ),
       )

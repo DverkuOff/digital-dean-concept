@@ -26,7 +26,8 @@ export function RequestTransparency({ def, status, createdAt, assigneeName, queu
       <Row icon={UserRound} label="Кто ведёт">
         {status === "returned" ? (
           <>
-            Сейчас заявка у вас: исправьте и подайте снова
+            {/* «Исправьте и подайте снова» уже сказано под номером заявки — здесь только у кого она. */}
+            Сейчас заявка у вас
             {assigneeName && (
               <span className="block text-muted-foreground">
                 Вопросы по возврату — методисту: <b className="font-medium text-foreground">{assigneeName}</b>
