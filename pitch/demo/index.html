@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Ориентир — демо</title>
+    <!-- Собрано scripts/build.mjs из записей scripts/record.mjs. Правки — в build.mjs. -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: 'Golos Text'; font-style: normal; font-weight: 400 900; font-display: block; src: url('assets/fonts/golos-text-cyrillic-wght-normal.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+      @font-face { font-family: 'Golos Text'; font-style: normal; font-weight: 400 900; font-display: block; src: url('assets/fonts/golos-text-latin-wght-normal.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fonts/IBMPlexMono-400-cyrillic.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+      @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fonts/IBMPlexMono-400-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      :root {
+        --ground: #edf1f8;
+        --ink: #111a33;
+        --muted: #4a5470;
+        --accent: #2a4fbf;
+        --accent-soft: #dde5f8;
+        --bezel: #141a2c;
+        --font: 'Golos Text', system-ui, sans-serif;
+        --mono: 'IBM Plex Mono', monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--ground); }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--ground); color: var(--ink); font-family: var(--font); }
+      .bg { position: absolute; inset: 0; }
+      .glow { position: absolute; border-radius: 50%; filter: blur(10px); }
+      #glow-a { width: 1100px; height: 1100px; left: -260px; top: -320px; background: radial-gradient(circle, rgba(42,79,191,0.16), rgba(42,79,191,0) 62%); }
+      #glow-b { width: 1200px; height: 1200px; right: -380px; bottom: -520px; background: radial-gradient(circle, rgba(232,163,58,0.13), rgba(232,163,58,0) 60%); }
+      #grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(17,26,51,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(17,26,51,0.035) 1px, transparent 1px); background-size: 64px 64px; }
+
+      /* Телефон: рамка и экран 390×844 css px (запись 780×1688) */
+      #phone { position: absolute; left: 300px; top: 78px; width: 440px; height: 924px; transform-origin: 0 0; }
+      #phone .bezel { position: absolute; inset: 0; border-radius: 64px; background: var(--bezel); box-shadow: 0 40px 80px -30px rgba(17,26,51,0.45), 0 0 0 1.5px rgba(255,255,255,0.08) inset; }
+      #phone .screen { position: absolute; left: 12px; top: 12px; width: 416px; height: 900px; border-radius: 52px; overflow: hidden; background: #f7f8fc; }
+      .media { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+
+      /* Окно браузера методиста: экран 1200×750 (запись 2160×1350) */
+      #desk { position: absolute; left: 605px; top: 236px; width: 1120px; height: 740px; border-radius: 18px; overflow: hidden; background: #fff; box-shadow: 0 40px 90px -36px rgba(17,26,51,0.45), 0 0 0 1px rgba(17,26,51,0.08); opacity: 0; }
+      #desk .chrome { position: absolute; left: 0; top: 0; right: 0; height: 40px; background: #e7ebf3; display: flex; align-items: center; gap: 8px; padding: 0 16px; }
+      #desk .chrome i { width: 12px; height: 12px; border-radius: 50%; background: #c3c9d6; display: block; }
+      #desk .chrome .url { margin-left: 18px; height: 26px; padding: 0 14px; border-radius: 13px; background: #fff; font-family: var(--mono); font-size: 15px; line-height: 26px; color: var(--muted); }
+      #desk .view { position: absolute; left: 0; top: 40px; width: 1120px; height: 700px; overflow: hidden; }
+
+      .scene { position: absolute; inset: 0; }
+      .col { position: absolute; left: 880px; top: 0; width: 900px; height: 100%; display: flex; flex-direction: column; justify-content: center; }
+      .kicker { font-family: var(--mono); font-size: 24px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }
+      .title { font-size: 72px; line-height: 1.04; font-weight: 750; letter-spacing: -0.02em; margin-bottom: 22px; }
+      .lead { font-size: 32px; line-height: 1.35; color: var(--muted); max-width: 820px; margin-bottom: 44px; }
+      .cues { list-style: none; display: flex; flex-direction: column; gap: 22px; max-width: 840px; }
+      .cue { display: flex; gap: 18px; align-items: flex-start; font-size: 32px; line-height: 1.3; font-weight: 520; opacity: 0; }
+      .cue .dot { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); margin-top: 14px; box-shadow: 0 0 0 6px var(--accent-soft); }
+      .big { margin-top: 36px; align-self: flex-start; padding: 14px 30px; border-radius: 22px; background: var(--accent); color: #fff; font-size: 64px; font-weight: 750; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; opacity: 0; }
+
+      .split-head { position: absolute; left: 195px; top: 40px; width: 1530px; }
+      .split-head .kicker { margin-bottom: 10px; }
+      .split-head .title { font-size: 54px; margin: 0; }
+      .split-cues { position: absolute; left: 605px; top: 994px; flex-direction: row; gap: 34px; max-width: none; }
+      .split-cues .cue { position: absolute; left: 0; top: 0; white-space: nowrap; font-size: 30px; gap: 14px; }
+      .split-cues .cue .dot { width: 11px; height: 11px; margin-top: 11px; box-shadow: 0 0 0 5px var(--accent-soft); }
+      .tag { position: absolute; top: 196px; font-family: var(--mono); font-size: 22px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+      .tag-phone { left: 195px; }
+      .tag-desk { left: 605px; }
+
+      .brand { display: flex; align-items: center; gap: 22px; margin-bottom: 40px; }
+      .brand img { width: 84px; height: 84px; border-radius: 22px; box-shadow: 0 14px 30px -14px rgba(42,79,191,0.6); }
+      .brand span { font-size: 46px; font-weight: 750; letter-spacing: -0.01em; }
+      #intro-title { font-size: 84px; line-height: 1.02; font-weight: 780; letter-spacing: -0.025em; margin-bottom: 30px; max-width: 900px; }
+      #intro-lead { font-size: 34px; line-height: 1.38; color: var(--muted); max-width: 860px; margin-bottom: 40px; }
+      #intro-meta { font-family: var(--mono); font-size: 22px; color: var(--muted); letter-spacing: 0.04em; }
+
+      .final { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+      .final .brand { margin-bottom: 26px; }
+      #final-kicker { font-family: var(--mono); font-size: 24px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+      #final-url { font-size: 92px; font-weight: 780; letter-spacing: -0.02em; margin-bottom: 44px; }
+      #final-logins { display: flex; gap: 22px; margin-bottom: 30px; }
+      .login { display: flex; flex-direction: column; gap: 6px; padding: 20px 30px; border-radius: 22px; background: #fff; box-shadow: 0 0 0 1px rgba(17,26,51,0.07), 0 16px 30px -22px rgba(17,26,51,0.35); min-width: 330px; }
+      .login b { font-family: var(--mono); font-weight: 400; font-size: 36px; color: var(--accent); }
+      .login span { font-size: 24px; color: var(--muted); }
+      #final-pass { font-size: 27px; color: var(--ink); margin-bottom: 40px; }
+      #final-pass b { font-family: var(--mono); font-weight: 400; color: var(--accent); }
+      #final-disc { font-size: 23px; color: var(--muted); max-width: 1200px; }
+
+      #disc { position: absolute; right: 56px; bottom: 26px; font-family: var(--mono); font-size: 17px; letter-spacing: 0.03em; color: rgba(74,84,112,0.95); }
+      #progress { position: absolute; left: 56px; bottom: 34px; width: 720px; height: 4px; border-radius: 2px; background: rgba(17,26,51,0.08); }
+      #progress-fill { position: absolute; inset: 0; border-radius: 2px; background: var(--accent); transform-origin: 0 50%; }
+      .tick { position: absolute; top: -4px; width: 2px; height: 12px; background: rgba(17,26,51,0.25); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="159.23" data-width="1920" data-height="1080">
+      <div id="bg" class="clip bg" data-start="0" data-duration="159.23" data-track-index="5">
+        <div id="grid"></div>
+        <div id="glow-a" class="glow"></div>
+        <div id="glow-b" class="glow"></div>
+      </div>
+
+      <div id="phone">
+        <div class="bezel"></div>
+        <div class="screen">
+          <img id="img-login" class="clip media" src="assets/clips/01-first.jpg" alt="" data-start="0" data-duration="8.6" data-track-index="1" />
+          <img id="img-rating-last" class="clip media" src="assets/clips/03-last.jpg" alt="" data-start="80.47" data-duration="17.34" data-track-index="1" />
+          <img id="img-sec-last" class="clip media" src="assets/clips/06-last.jpg" alt="" data-start="126.22" data-duration="5.8" data-track-index="1" />
+          <img id="img-off-last" class="clip media" src="assets/clips/07-last.jpg" alt="" data-start="149.38" data-duration="1.6" data-track-index="1" />
+          <video id="v-today" class="clip media" src="assets/clips/01-login-today.mp4" muted playsinline data-start="8" data-duration="15.15" data-media-start="0.6" data-track-index="0"></video>
+          <video id="v-schedule" class="clip media" src="assets/clips/02-schedule.mp4" muted playsinline data-start="23.15" data-duration="27.13" data-media-start="0.35" data-track-index="0"></video>
+          <video id="v-rating" class="clip media" src="assets/clips/03-rating.mp4" muted playsinline data-start="50.28" data-duration="30.29" data-media-start="5.82" data-track-index="0"></video>
+          <video id="v-ready" class="clip media" src="assets/clips/05-student-ready.mp4" muted playsinline data-start="97.41" data-duration="23.64" data-media-start="1.31" data-track-index="0"></video>
+          <video id="v-security" class="clip media" src="assets/clips/06-security.mp4" muted playsinline data-start="121.05" data-duration="5.22" data-media-start="0.6" data-track-index="0"></video>
+          <video id="v-offline" class="clip media" src="assets/clips/07-dark-offline.mp4" muted playsinline data-start="131.47" data-duration="17.96" data-media-start="0.4" data-track-index="0"></video>
+        </div>
+      </div>
+
+      <div id="desk">
+        <div class="chrome"><i></i><i></i><i></i><span class="url" data-layout-ignore>orientir.rapira-cloud.ru/staff</span></div>
+        <div class="view">
+          <video id="v-staff" class="clip media" src="assets/clips/04-staff.mp4" muted playsinline data-start="80.57" data-duration="10.92" data-media-start="0.4" data-track-index="0"></video>
+          <video id="v-staff-b" class="clip media" src="assets/clips/04-staff.mp4" muted playsinline data-start="91.49" data-duration="12.25" data-media-start="13.41" data-track-index="0"></video>
+        </div>
+      </div>
+
+      <div id="s-intro" class="clip scene scene-intro" data-start="0" data-duration="8" data-track-index="2">
+        <div class="col">
+          <div class="brand"><img id="intro-icon" src="assets/app-icon.png" alt="" /><span id="intro-name">Ориентир</span></div>
+          <h1 id="intro-title">Цифровой деканат, который пишет первым</h1>
+          <p id="intro-lead">Расписание, оценки, рейтинг, заявки и объявления деканата — в одном кабинете на телефоне. И не только «что было», но и «что будет, если…».</p>
+          <p id="intro-meta">Демо прототипа · 2:39 · без звука</p>
+        </div>
+      </div>
+      <div id="s-today" class="clip scene scene-solo" data-start="8" data-duration="15.15" data-track-index="2">
+      <div class="col">
+        <p class="kicker" id="k-today">01 · Сегодня</p>
+        <h2 class="title" id="h-today">Деканат пишет первым</h2>
+        <p class="lead" id="l-today">Максим Орлов, 2 курс, входит одной кнопкой. Главный экран собирает то, что важно сегодня.</p>
+        <ul class="cues"><li id="cue-today-0" class="cue"><span class="dot"></span><span class="t">Карточки по правилам: перенос пары, возвращённая заявка, пересдача</span></li><li id="cue-today-1" class="cue"><span class="dot"></span><span class="t">Пересдача через 12 дней и срок заявления — в одной карточке</span></li><li id="cue-today-2" class="cue"><span class="dot"></span><span class="t">Ниже — пары на сегодня, рейтинг и новости деканата</span></li></ul>
+        
+      </div>
+    </div>
+      <div id="s-schedule" class="clip scene scene-solo" data-start="23.15" data-duration="27.13" data-track-index="2">
+      <div class="col">
+        <p class="kicker" id="k-schedule">02 · Расписание</p>
+        <h2 class="title" id="h-schedule">Перенос видно сразу</h2>
+        <p class="lead" id="l-schedule">День, неделя и месяц. Изменения выделены цветом, с причиной и «было → стало».</p>
+        <ul class="cues"><li id="cue-schedule-0" class="cue"><span class="dot"></span><span class="t">Семинар перенесли: 10:40 → 16:00, по просьбе кафедры</span></li><li id="cue-schedule-1" class="cue"><span class="dot"></span><span class="t">Неделя целиком, сводка изменений сверху</span></li><li id="cue-schedule-2" class="cue"><span class="dot"></span><span class="t">Месяц: пары, экзамены, пересдача и всё, что поменялось</span></li></ul>
+        
+      </div>
+    </div>
+      <div id="s-rating" class="clip scene scene-solo" data-start="50.28" data-duration="30.29" data-track-index="2">
+      <div class="col">
+        <p class="kicker" id="k-rating">03 · Рейтинг-навигатор</p>
+        <h2 class="title" id="h-rating">Что будет, если…</h2>
+        <p class="lead" id="l-rating">Кабинет показывает не только «что было». Ползунок считает рейтинг после пересдачи.</p>
+        <ul class="cues"><li id="cue-rating-0" class="cue"><span class="dot"></span><span class="t">Сейчас 68,4 из 100: долг по макроэкономике блокирует стипендию</span></li><li id="cue-rating-1" class="cue"><span class="dot"></span><span class="t">«Если пересдам на 70» — пересчёт сразу, без перезагрузки</span></li><li id="cue-rating-2" class="cue"><span class="dot"></span><span class="t">Прогноз 71,7 — академическая стипендия открывается</span></li><li id="cue-rating-3" class="cue"><span class="dot"></span><span class="t">«Подать заявление» создаёт настоящую заявку в учебный офис</span></li><li id="cue-rating-4" class="cue"><span class="dot"></span><span class="t">Статус «Подана», обычный срок и место в очереди</span></li></ul>
+        <p class="big" id="big-rating">68,4 → 71,7</p>
+      </div>
+    </div>
+      <div id="s-split" class="clip scene scene-split" data-start="80.57" data-duration="23.17" data-track-index="2">
+        <div class="split-head"><p class="kicker" id="k-split">04 · Учебный офис</p><h2 class="title" id="h-split">Методист меняет статус — студент видит сразу</h2></div>
+        <ul class="cues split-cues"><li id="cue-split-0" class="cue"><span class="dot"></span><span class="t">Заявка Орлова в «Новых»</span></li><li id="cue-split-1" class="cue"><span class="dot"></span><span class="t">«Взять в работу»</span></li><li id="cue-split-2" class="cue"><span class="dot"></span><span class="t">Заявка «В работе», ведёт Ирина Сафонова</span></li><li id="cue-split-3" class="cue"><span class="dot"></span><span class="t">«Готово» — студенту уходит уведомление</span></li><li id="cue-split-4" class="cue"><span class="dot"></span><span class="t">У студента: «Готова», ведёт Ирина Сафонова</span></li></ul>
+        <p class="tag tag-phone" id="tag-phone" data-layout-ignore>Студент · телефон</p>
+        <p class="tag tag-desk" id="tag-desk" data-layout-ignore>Методист · компьютер</p>
+      </div>
+      <div id="s-ready" class="clip scene scene-solo" data-start="103.74" data-duration="17.31" data-track-index="2">
+      <div class="col">
+        <p class="kicker" id="k-ready">05 · Статус и уведомление</p>
+        <h2 class="title" id="h-ready">Заявка готова</h2>
+        <p class="lead" id="l-ready">Таймлайн как у посылки: кто ведёт, когда взяли, когда готово.</p>
+        <ul class="cues"><li id="cue-ready-0" class="cue"><span class="dot"></span><span class="t">История: подана → в работе → готова</span></li><li id="cue-ready-1" class="cue"><span class="dot"></span><span class="t">Уведомления: «Взяли в работу», «Готово»</span></li><li id="cue-ready-2" class="cue"><span class="dot"></span><span class="t">«Сегодня» уже знает: заявление принято, вы в ведомости</span></li></ul>
+        
+      </div>
+    </div>
+      <div id="s-security" class="clip scene scene-solo" data-start="121.05" data-duration="10.42" data-track-index="2">
+      <div class="col">
+        <p class="kicker" id="k-security">06 · Безопасность</p>
+        <h2 class="title" id="h-security">Каждый видит только своё</h2>
+        <p class="lead" id="l-security">Анна Соколова вставляет адрес заявки Максима — и получает 404.</p>
+        <ul class="cues"><li id="cue-security-0" class="cue"><span class="dot"></span><span class="t">Чужая заявка = несуществующая: 404, проверка в запросе к базе</span></li><li id="cue-security-1" class="cue"><span class="dot"></span><span class="t">Пароли — argon2id, роль методиста проверяет сервер</span></li><li id="cue-security-2" class="cue"><span class="dot"></span><span class="t">Автотесты: 80 сценариев в браузере на 360 px и 69 юнит-тестов</span></li></ul>
+        
+      </div>
+    </div>
+      <div id="s-offline" class="clip scene scene-solo" data-start="131.47" data-duration="18.76" data-track-index="2">
+      <div class="col">
+        <p class="kicker" id="k-offline">07 · Каждый день</p>
+        <h2 class="title" id="h-offline">Тёмная тема и работа без сети</h2>
+        <p class="lead" id="l-offline">Кабинет ставится на главный экран телефона как приложение.</p>
+        <ul class="cues"><li id="cue-offline-0" class="cue"><span class="dot"></span><span class="t">Светлая, тёмная или как в системе — без вспышки при загрузке</span></li><li id="cue-offline-1" class="cue"><span class="dot"></span><span class="t">Нет сети: «Сегодня», расписание и учёба открываются из кэша с пометкой времени</span></li></ul>
+        
+      </div>
+    </div>
+      <div id="s-final" class="clip scene scene-final" data-start="150.23" data-duration="9" data-track-index="2">
+        <div class="final">
+          <div class="brand"><img id="final-icon" src="assets/app-icon.png" alt="" /><span id="final-name">Ориентир</span></div>
+          <p id="final-kicker">Попробуйте сами</p>
+          <p id="final-url">orientir.rapira-cloud.ru</p>
+          <div id="final-logins">
+            <div class="login"><b>orlov</b><span>студент с долгом и пересдачей</span></div>
+            <div class="login"><b>sokolova</b><span>отличница без долгов</span></div>
+            <div class="login"><b>metodist</b><span>очередь учебного офиса</span></div>
+          </div>
+          <p id="final-pass">Пароль <b>demo2026</b> · на странице входа — кнопки «Войти как…» и копии 2, 3 для независимой проверки</p>
+          <p id="final-disc">Концепт для MGIMO×AI CHALLENGE, кейс «Цифровой деканат будущего». Не официальный сервис, все данные вымышлены.</p>
+        </div>
+      </div>
+
+      <div id="hud" class="clip" data-start="0" data-duration="159.23" data-track-index="6" data-layout-ignore>
+        <div id="progress"><div id="progress-fill"></div><span class="tick" id="tick-0" style="left:5.02%"></span><span class="tick" id="tick-1" style="left:14.54%"></span><span class="tick" id="tick-2" style="left:31.58%"></span><span class="tick" id="tick-3" style="left:50.60%"></span><span class="tick" id="tick-4" style="left:65.15%"></span><span class="tick" id="tick-5" style="left:76.02%"></span><span class="tick" id="tick-6" style="left:82.57%"></span></div>
+        <p id="disc" data-layout-ignore>Концепт для MGIMO×AI CHALLENGE · данные вымышлены</p>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#glow-a", { x: -40, y: 0, scale: 1 }, { x: 60, y: 30, scale: 1.12, duration: 79.615, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+      tl.fromTo("#glow-b", { x: 30, y: 0, scale: 1.05 }, { x: -50, y: -40, scale: 0.95, duration: 79.615, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+      tl.fromTo("#phone", { y: 24 }, { y: 0, duration: 1.4, ease: "power2.out" }, 0);
+      tl.from("#intro-icon", { scale: 0.6, opacity: 0, duration: 0.6, ease: "back.out(1.6)" }, 0.3);
+      tl.from("#intro-name", { x: -20, opacity: 0, duration: 0.6, ease: "power3.out" }, 0.45);
+      tl.from("#intro-title", { y: 30, opacity: 0, duration: 0.8, ease: "power3.out" }, 0.8);
+      tl.from("#intro-lead", { y: 20, opacity: 0, duration: 0.7, ease: "power2.out" }, 1.4);
+      tl.from("#intro-meta", { opacity: 0, duration: 0.6 }, 2.0);
+      tl.to("#s-intro .col", { opacity: 0, y: -16, duration: 0.45, ease: "power2.in" }, 7.5);
+      tl.from("#k-today", { y: 14, opacity: 0, duration: 0.5, ease: "power3.out" }, 8.15);
+      tl.from("#h-today", { y: 26, opacity: 0, duration: 0.7, ease: "power3.out" }, 8.25);
+      tl.from("#l-today", { y: 18, opacity: 0, duration: 0.6, ease: "power2.out" }, 8.5);
+      tl.to("#s-today .col", { opacity: 0, y: -14, duration: 0.4, ease: "power2.in" }, 22.7);
+      tl.from("#k-schedule", { y: 14, opacity: 0, duration: 0.5, ease: "power3.out" }, 23.3);
+      tl.from("#h-schedule", { y: 26, opacity: 0, duration: 0.7, ease: "power3.out" }, 23.4);
+      tl.from("#l-schedule", { y: 18, opacity: 0, duration: 0.6, ease: "power2.out" }, 23.65);
+      tl.to("#s-schedule .col", { opacity: 0, y: -14, duration: 0.4, ease: "power2.in" }, 49.83);
+      tl.from("#k-rating", { y: 14, opacity: 0, duration: 0.5, ease: "power3.out" }, 50.43);
+      tl.from("#h-rating", { y: 26, opacity: 0, duration: 0.7, ease: "power3.out" }, 50.53);
+      tl.from("#l-rating", { y: 18, opacity: 0, duration: 0.6, ease: "power2.out" }, 50.78);
+      tl.to("#s-rating .col", { opacity: 0, y: -14, duration: 0.4, ease: "power2.in" }, 80.12);
+      tl.from("#k-ready", { y: 14, opacity: 0, duration: 0.5, ease: "power3.out" }, 103.89);
+      tl.from("#h-ready", { y: 26, opacity: 0, duration: 0.7, ease: "power3.out" }, 103.99);
+      tl.from("#l-ready", { y: 18, opacity: 0, duration: 0.6, ease: "power2.out" }, 104.24);
+      tl.to("#s-ready .col", { opacity: 0, y: -14, duration: 0.4, ease: "power2.in" }, 120.6);
+      tl.from("#k-security", { y: 14, opacity: 0, duration: 0.5, ease: "power3.out" }, 121.2);
+      tl.from("#h-security", { y: 26, opacity: 0, duration: 0.7, ease: "power3.out" }, 121.3);
+      tl.from("#l-security", { y: 18, opacity: 0, duration: 0.6, ease: "power2.out" }, 121.55);
+      tl.to("#s-security .col", { opacity: 0, y: -14, duration: 0.4, ease: "power2.in" }, 131.02);
+      tl.from("#k-offline", { y: 14, opacity: 0, duration: 0.5, ease: "power3.out" }, 131.62);
+      tl.from("#h-offline", { y: 26, opacity: 0, duration: 0.7, ease: "power3.out" }, 131.72);
+      tl.from("#l-offline", { y: 18, opacity: 0, duration: 0.6, ease: "power2.out" }, 131.97);
+      tl.to("#s-offline .col", { opacity: 0, y: -14, duration: 0.4, ease: "power2.in" }, 149.78);
+      tl.fromTo("#cue-today-0", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 10.44);
+      tl.fromTo("#cue-today-1", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 14.71);
+      tl.to("#cue-today-0", { opacity: 0.42, duration: 0.4 }, 14.71);
+      tl.fromTo("#cue-today-2", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 18.91);
+      tl.to("#cue-today-1", { opacity: 0.42, duration: 0.4 }, 18.91);
+      tl.fromTo("#cue-schedule-0", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 27.51);
+      tl.fromTo("#cue-schedule-1", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 31.94);
+      tl.to("#cue-schedule-0", { opacity: 0.42, duration: 0.4 }, 31.94);
+      tl.fromTo("#cue-schedule-2", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 42.97);
+      tl.to("#cue-schedule-1", { opacity: 0.42, duration: 0.4 }, 42.97);
+      tl.fromTo("#cue-rating-0", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 51.48);
+      tl.fromTo("#cue-rating-1", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 57.28);
+      tl.to("#cue-rating-0", { opacity: 0.42, duration: 0.4 }, 57.28);
+      tl.fromTo("#cue-rating-2", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 62.74);
+      tl.to("#cue-rating-1", { opacity: 0.42, duration: 0.4 }, 62.74);
+      tl.fromTo("#big-rating", { scale: 0.85, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.7)" }, 62.94);
+      tl.to("#big-rating", { opacity: 0, y: -10, duration: 0.4 }, 68.94);
+      tl.fromTo("#cue-rating-3", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 70.01);
+      tl.to("#cue-rating-2", { opacity: 0.42, duration: 0.4 }, 70.01);
+      tl.fromTo("#cue-rating-4", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 77.46);
+      tl.to("#cue-rating-3", { opacity: 0.42, duration: 0.4 }, 77.46);
+      tl.fromTo("#cue-split-0", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 84.62);
+      tl.fromTo("#cue-split-1", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 89.94);
+      tl.to("#cue-split-0", { opacity: 0, duration: 0.25 }, 89.94);
+      tl.fromTo("#cue-split-2", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 92.09);
+      tl.to("#cue-split-1", { opacity: 0, duration: 0.25 }, 92.09);
+      tl.fromTo("#cue-split-3", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 95.55);
+      tl.to("#cue-split-2", { opacity: 0, duration: 0.25 }, 95.55);
+      tl.fromTo("#cue-split-4", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 99.18);
+      tl.to("#cue-split-3", { opacity: 0, duration: 0.25 }, 99.18);
+      tl.fromTo("#cue-ready-0", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 104.34);
+      tl.fromTo("#cue-ready-1", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 110.17);
+      tl.to("#cue-ready-0", { opacity: 0.42, duration: 0.4 }, 110.17);
+      tl.fromTo("#cue-ready-2", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 117.75);
+      tl.to("#cue-ready-1", { opacity: 0.42, duration: 0.4 }, 117.75);
+      tl.fromTo("#cue-security-0", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 123.36);
+      tl.fromTo("#cue-security-1", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 125.66);
+      tl.to("#cue-security-0", { opacity: 0.42, duration: 0.4 }, 125.66);
+      tl.fromTo("#cue-security-2", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 127.96);
+      tl.to("#cue-security-1", { opacity: 0.42, duration: 0.4 }, 127.96);
+      tl.fromTo("#cue-offline-0", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 136.15);
+      tl.fromTo("#cue-offline-1", { x: -18, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, 145.33);
+      tl.to("#cue-offline-0", { opacity: 0.42, duration: 0.4 }, 145.33);
+      tl.fromTo("#v-today", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "none" }, 8);
+      tl.fromTo("#v-schedule", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "none" }, 23.15);
+      tl.fromTo("#v-rating", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "none" }, 50.28);
+      tl.fromTo("#v-staff", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "none" }, 80.57);
+      tl.fromTo("#v-staff-b", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "none" }, 91.49);
+      tl.fromTo("#v-ready", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "none" }, 97.41);
+      tl.fromTo("#v-security", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "none" }, 121.05);
+      tl.fromTo("#v-offline", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "none" }, 131.47);
+      tl.to("#phone", { x: -105, y: 158, scale: 0.8, duration: 0.9, ease: "power3.inOut" }, 80.27);
+      tl.fromTo("#desk", { x: 160, opacity: 0 }, { x: 0, opacity: 1, duration: 0.9, ease: "power3.out" }, 80.67);
+      tl.from("#k-split", { y: 14, opacity: 0, duration: 0.5, ease: "power3.out" }, 80.87);
+      tl.from("#h-split", { y: 22, opacity: 0, duration: 0.6, ease: "power3.out" }, 80.97);
+      tl.from(["#tag-phone", "#tag-desk"], { opacity: 0, y: 8, duration: 0.5, stagger: 0.1 }, 81.37);
+      tl.to("#s-split > *", { opacity: 0, duration: 0.4 }, 103.34);
+      tl.to("#desk", { x: 160, opacity: 0, duration: 0.8, ease: "power3.in" }, 103.14);
+      tl.to("#phone", { x: 0, y: 0, scale: 1, duration: 0.9, ease: "power3.inOut" }, 103.44);
+      tl.to("#phone", { y: 60, opacity: 0, duration: 0.7, ease: "power2.in" }, 149.93);
+      tl.from("#final-icon", { scale: 0.6, opacity: 0, duration: 0.6, ease: "back.out(1.6)" }, 150.53);
+      tl.from("#final-name", { x: -16, opacity: 0, duration: 0.6 }, 150.63);
+      tl.from("#final-kicker", { y: 14, opacity: 0, duration: 0.5 }, 150.83);
+      tl.from("#final-url", { y: 24, opacity: 0, duration: 0.7, ease: "power3.out" }, 150.98);
+      tl.from("#final-logins .login", { y: 16, opacity: 0, duration: 0.5, stagger: 0.15, ease: "power2.out" }, 151.53);
+      tl.from("#final-pass", { opacity: 0, duration: 0.5 }, 152.23);
+      tl.from("#final-disc", { opacity: 0, duration: 0.5 }, 152.53);
+      tl.fromTo("#progress-fill", { scaleX: 0 }, { scaleX: 1, duration: 159.23, ease: "none" }, 0);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

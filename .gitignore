@@ -52,3 +52,9 @@ next-env.d.ts
 /blob-report/
 /playwright/.cache/
 /e2e/.auth/
+
+# Демо-видео (HyperFrames): записи экрана, рендеры и служебное — не коммитим, только исходники
+pitch/demo/assets/clips/
+pitch/demo/renders/
+pitch/demo/.hyperframes/
+pitch/demo/node_modules/
