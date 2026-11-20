@@ -99,3 +99,19 @@ export function formatDayRange(a: Date, b: Date): string {
   const [db, mb] = formatDayMonth(b).split(" ");
   return ma === mb ? `${da}–${db} ${ma}` : `${da} ${ma} — ${db} ${mb}`;
 }
+
+/** Начало месяца по Москве со сдвигом на offset месяцев (0 — текущий). */
+export function startOfMskMonth(d: Date, offset = 0): Date {
+  const [y, m] = mskDateKey(d).split("-").map(Number);
+  const idx = y * 12 + (m - 1) + offset;
+  const yy = Math.floor(idx / 12);
+  const mm = String((idx % 12) + 1).padStart(2, "0");
+  return new Date(`${yy}-${mm}-01T00:00:00+03:00`);
+}
+
+const fmtMonth = new Intl.DateTimeFormat("ru-RU", { timeZone: TZ, month: "long" });
+/** «Ноябрь 2026» (именительный падеж, с заглавной). */
+export function formatMonthYear(d: Date): string {
+  const m = fmtMonth.format(d);
+  return `${m[0].toUpperCase()}${m.slice(1)} ${mskDateKey(d).slice(0, 4)}`;
+}

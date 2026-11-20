@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as s from "../src/server/db/schema";
 import { ARGON2_OPTIONS } from "../src/server/password-opts";
-import { DAY_MS, addDays, formatDayMonth, mskAt, startOfMskDay, startOfMskWeek } from "../src/lib/dates";
+import { DAY_MS, addDays, formatDayMonth, mskAt, mskDateKey, startOfMskDay, startOfMskWeek } from "../src/lib/dates";
 
 type DB = NodePgDatabase<typeof s>;
 
@@ -14,6 +14,17 @@ export const DEMO_PASSWORD = "demo2026";
 const STAFF_NAME = "Ирина Сафонова";
 // Горизонты дат: демо сбрасывают в день сдачи (22.11), итоги — 28.11. Всё «будущее» живёт 10+ дней.
 const RETAKE_IN_DAYS = 12;
+
+/** Экзамены и пересдачи не ставим на воскресенье и на 1, 2 и 7 января: сдвигаем на следующий день. */
+function examDay(d: Date): Date {
+  let x = d;
+  for (;;) {
+    const k = mskDateKey(x);
+    const sunday = new Date(`${k}T12:00:00Z`).getUTCDay() === 0;
+    if (!sunday && !["01-01", "01-02", "01-07"].includes(k.slice(5))) return x;
+    x = addDays(x, 1);
+  }
+}
 const STAFF_NAMES: Record<string, string> = { "": STAFF_NAME, "2": "Павел Лещинский", "3": "Наталья Гребнева" };
 export const DEMO_LOGINS = { a: "sokolova", b: "orlov", staff: "metodist" } as const;
 /** Наборы персонажей: жюри работает параллельно, у каждого свой «нетронутый» сюжет. */
@@ -122,6 +133,9 @@ const FIRST_M = ["Артём", "Глеб", "Денис", "Егор", "Илья",
 
 export async function seed(db: DB, now = new Date()) {
   const today = startOfMskDay(now);
+  // Сессия через ~5,5 недели; пары семестра заканчиваются до неё. Пересдача — через 12 дней (не в воскресенье).
+  const sessionStart = addDays(today, 38);
+  const retakeDay = examDay(addDays(today, RETAKE_IN_DAYS));
   const weekStart = startOfMskWeek(now);
 
   /* ── Дисциплины ── */
@@ -249,17 +263,19 @@ export async function seed(db: DB, now = new Date()) {
   for (const { studentB } of sets) await db.insert(s.examAttempt).values([
     { studentId: studentB, disciplineId: discId.macro, kind: "main", scheduledAt: mskAt(addDays(today, -150), 10), room: "ауд. 1012", score: 41, result: "failed" },
     { studentId: studentB, disciplineId: discId.macro, kind: "retake1", scheduledAt: mskAt(addDays(today, -55), 12, 40), room: "ауд. 2034", score: 48, result: "failed" },
-    { studentId: studentB, disciplineId: discId.macro, kind: "retake2", scheduledAt: mskAt(addDays(today, RETAKE_IN_DAYS), 11), room: "ауд. 2034", score: null, result: "scheduled" },
+    { studentId: studentB, disciplineId: discId.macro, kind: "retake2", scheduledAt: mskAt(retakeDay, 11), room: "ауд. 2034", score: null, result: "scheduled" },
   ]);
-  const sessionStart = addDays(today, 38);
   const sessionExams: DiscKey[] = ["ecmt", "worldec", "eng3", "prob"];
+  // Экзамены через 3–4 дня друг от друга, без воскресений и праздников.
+  const examDates: Date[] = [];
+  for (let i = 0, d = examDay(sessionStart); i < sessionExams.length; i++, d = examDay(addDays(d, 4))) examDates.push(d);
   for (const sid of sets.flatMap((x) => [x.studentA, x.studentB])) {
     await db.insert(s.examAttempt).values(
       sessionExams.map((key, i) => ({
         studentId: sid,
         disciplineId: discId[key],
         kind: "main" as const,
-        scheduledAt: mskAt(addDays(sessionStart, i * 4), 10),
+        scheduledAt: mskAt(examDates[i], 10),
         room: pick(["ауд. 1012", "ауд. 2001", "ауд. 3045"]),
         score: null,
         result: "scheduled" as const,
@@ -275,6 +291,7 @@ export async function seed(db: DB, now = new Date()) {
       for (const [dow, slot, key, type, room] of [...COMMON_LECTURES, ...GROUP_TPL[group]]) {
         const [h, m] = SLOTS[slot];
         const startsAt = mskAt(addDays(monday, dow), h, m);
+        if (startsAt.getTime() >= sessionStart.getTime()) continue; // во время сессии пар нет
         lessons.push({
           id: randomUUID(),
           groupCode: group,
@@ -433,7 +450,7 @@ export async function seed(db: DB, now = new Date()) {
       n(studentA, { kind: "schedule", title: "Смена аудитории", body: "Семинар пройдёт в ауд. 1107: аудитория занята под олимпиаду.", link: "/schedule", createdAt: addDays(now, -0.8) }),
       n(studentA, { kind: "grade", title: "Выставлены баллы за 2-й срез", body: "Эконометрика: 88 из 100.", link: "/grades", createdAt: addDays(now, -6), readAt: addDays(now, -5) }),
       n(studentB, { kind: "schedule", title: "Перенос семинара по эконометрике", body: "Преподаватель на конференции, семинар перенесён на вечер.", link: "/schedule", createdAt: new Date(now.getTime() - 2 * 3600 * 1000) }),
-      n(studentB, { kind: "retake", title: "Пересдача 2: Макроэкономика", body: "Пересдача назначена, ауд. 2034. Это последняя попытка перед комиссией.", link: "/rating", dueAt: mskAt(addDays(today, RETAKE_IN_DAYS), 11), createdAt: addDays(now, -3) }),
+      n(studentB, { kind: "retake", title: "Пересдача 2: Макроэкономика", body: "Пересдача назначена, ауд. 2034. Это последняя попытка перед комиссией.", link: "/rating", dueAt: mskAt(retakeDay, 11), createdAt: addDays(now, -3) }),
       n(studentB, { kind: "request", title: "Заявку вернули: уважительная причина пропуска", body: returnReason, link: "/requests", createdAt: addDays(now, -1) }),
       n(studentB, { kind: "deadline", title: "Заявление на пересдачу", body: "Подайте заявление на пересдачу по макроэкономике, чтобы попасть в ведомость.", link: "/requests/new?type=retake_application", dueAt: mskAt(addDays(today, 7), 18), createdAt: addDays(now, -3) }),
       n(studentB, { kind: "deadline", title: "Выбор темы курсовой работы", body: "Согласуйте тему с научным руководителем и отметьте её в кабинете.", dueAt: mskAt(addDays(today, 9), 18), createdAt: addDays(now, -2), readAt: addDays(now, -1) }),
