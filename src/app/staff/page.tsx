@@ -78,7 +78,7 @@ export default async function StaffQueuePage({ searchParams }: { searchParams: P
                       <RequestIcon icon={def?.icon ?? "file"} />
                     </div>
                     <div className="min-w-0 flex-1 md:contents">
-                      <div className="flex items-start justify-between gap-2 md:block">
+                      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1 md:block">
                         <p className="font-medium leading-snug">
                           {def?.title ?? r.type}
                           {r.awaitingReply && (
