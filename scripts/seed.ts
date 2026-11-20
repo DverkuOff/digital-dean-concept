@@ -383,7 +383,7 @@ export async function seed(db: DB, now = new Date()) {
   const moveKey = nearestMove ? (Object.keys(discId) as DiscKey[]).find((k) => discId[k] === nearestMove.disciplineId) : undefined;
   const moveName = moveKey ? DISCIPLINES[moveKey].name : "семинар";
   const moveBody = nearestMove
-    ? `${formatShortWeekday(nearestMove.startsAt!)}, ${formatDayMonth(nearestMove.startsAt!)}: ${formatTime(nearestMove.originalStartsAt!)} → ${formatTime(nearestMove.startsAt!)}. ${nearestMove.changeNote}.`
+    ? `${formatShortWeekday(nearestMove.startsAt!)}, ${formatDayMonth(nearestMove.startsAt!)}, ${formatTime(nearestMove.originalStartsAt!)} → ${formatTime(nearestMove.startsAt!)}. ${nearestMove.changeNote}.`
     : "Семинар перенесён, подробности в расписании.";
 
 

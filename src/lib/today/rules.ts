@@ -71,7 +71,7 @@ export function buildTodayCards(input: TodayInput): TodayCard[] {
     if (l.status === "moved") {
       title = `Перенос: ${l.discipline}`;
       const from = l.originalStartsAt ? `${formatTime(l.originalStartsAt)} → ` : "";
-      body = `${when}: ${from}${formatTime(l.startsAt)}, ${l.room}`;
+      body = `${when}, ${from}${formatTime(l.startsAt)}, ${l.room}`;
     } else if (l.status === "room_changed") {
       title = `Другая аудитория: ${l.discipline}`;
       body = `${when}, ${formatTime(l.startsAt)}: ${l.originalRoom ? `${l.originalRoom} → ` : ""}${l.room}`;

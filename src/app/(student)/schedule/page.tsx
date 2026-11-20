@@ -107,7 +107,11 @@ export default async function SchedulePage({ searchParams }: { searchParams: SP 
                   {hasChange && <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-warning" aria-label="есть изменения" />}
                   {dayExams.length > 0 && (
                     <span
-                      className={cn("absolute left-1.5 top-1.5 size-2 rounded-full", dayExams.some((e) => e.retake) ? "bg-destructive" : "bg-primary", active && "ring-1 ring-primary-foreground")}
+                      className={cn(
+                        "absolute bottom-1 left-1/2 h-1 w-4 -translate-x-1/2 rounded-full",
+                        dayExams.some((e) => e.retake) ? "bg-destructive" : "bg-primary",
+                        active && "bg-primary-foreground",
+                      )}
                       aria-label={dayExams.some((e) => e.retake) ? "пересдача" : "экзамен"}
                     />
                   )}
