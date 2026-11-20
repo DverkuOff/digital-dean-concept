@@ -1,0 +1,35 @@
+# Ориентир: прод на общем сервере. Наружу только 127.0.0.1:3110, HTTPS даёт системный Caddy.
+name: orientir
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: orientir
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?}
+      POSTGRES_DB: orientir
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orientir -d orientir"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    mem_limit: 512m
+  app:
+    build: ./src
+    image: orientir-app:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://orientir:${DB_PASSWORD}@db:5432/orientir
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?}
+      BETTER_AUTH_URL: https://orientir.rapira-cloud.ru
+      AUTH_IP_HEADERS: x-forwarded-for
+    ports:
+      - "127.0.0.1:3110:3000"
+    mem_limit: 768m
+volumes:
+  pgdata:

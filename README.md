@@ -39,7 +39,7 @@
 **Если сюжет уже прошёл другой эксперт** (заявка переподана, карточка «Сегодня» скрыта), возьмите копию 2 или 3. У копий те же данные, но свои: действия под `orlov2` не меняют `orlov` и `orlov3`. Очередь методиста общая для всех трёх методистов: это одна служба.
 
 ## Демо
-Живое демо: _появится после деплоя на Amvera_ · Скриншоты (телефон 360 px и компьютер 1280 px, на свежем демо): `docs/screenshots/`, переснять — `PW_CHANNEL=chrome npm run screens`.
+**Живое демо: https://orientir.rapira-cloud.ru** (логины выше) · Скриншоты (телефон 360 px и компьютер 1280 px, на свежем демо): `docs/screenshots/`, переснять — `PW_CHANNEL=chrome npm run screens`.
 
 ## Как запустить локально
 Нужны Node.js 24 и Docker.
@@ -68,7 +68,16 @@ npm run test:e2e                      # собирает прод-сборку, 
 ### Сброс демо
 `npm run db:reset` — удаляет данные, применяет миграции и создаёт демо заново за долю секунды. Все даты (переносы, пересдача, сессия, дедлайны) считаются от момента сброса. Перед показом жюри — сбросить.
 
-## Деплой на Amvera
+## Деплой (как развёрнуто живое демо)
+Свой сервер с Docker и Caddy (HTTPS). Файл стека — `deploy/compose.server.yml`: приложение и PostgreSQL 17, наружу только `127.0.0.1:3110`.
+1. Скопировать код в `/opt/orientir/src` (`git archive HEAD | ssh <сервер> 'tar -x -C /opt/orientir/src'`), `deploy/compose.server.yml` → `/opt/orientir/compose.yml`.
+2. В `/opt/orientir/.env` (права 600) задать `DB_PASSWORD` и `BETTER_AUTH_SECRET` (`openssl rand -base64 32`).
+3. `docker compose up -d --build`: контейнер ждёт базу, применяет миграции и создаёт демо-данные, если база пустая.
+4. В Caddyfile: `orientir.rapira-cloud.ru { reverse_proxy 127.0.0.1:3110 }`, затем `caddy validate` и `systemctl reload caddy`. Caddy сам перезаписывает `X-Forwarded-For` реальным IP клиента, поэтому лимит входа считает каждого пользователя отдельно (проверено: подделанные заголовки не помогают, 429 на 31-й попытке; в сессии записан реальный IP).
+5. Проверка: `https://orientir.rapira-cloud.ru/api/health` → `{"ok":true,"db":"up"}`.
+6. Пересчитать даты демо (вечером в день сдачи): `docker compose exec app node dist/reset.cjs`.
+
+## Деплой на Amvera (альтернатива)
 1. Создать проект PostgreSQL (managed) в Amvera, записать имя БД, пользователя, пароль и внутренний хост вида `amvera-<user>-cnpg-<project>-rw`.
 2. Создать приложение, подключить этот репозиторий (git push в репозиторий Amvera или GitHub). Сборка идёт по `Dockerfile`, конфиг — `amvera.yml` (порт 3000).
 3. В «Переменных» приложения задать секреты:

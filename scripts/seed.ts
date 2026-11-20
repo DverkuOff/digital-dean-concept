@@ -320,9 +320,13 @@ export async function seed(db: DB, now = new Date()) {
     cancelled.changeNote = "Занятие отменено, материал — в электронном курсе";
     cancelled.changedAt = new Date(now.getTime() - 5 * 60 * 60 * 1000);
   }
-  for (let w = 1; w <= 7; w++) {
+  // Текущая неделя тоже: в конце недели ближайший семинар уже на следующей, а экран «Неделя» не должен быть пустым.
+  const curWeekEnd = addDays(weekStart, 7).getTime();
+  const hasMoveThisWeek = lessons.some((x) => x.groupCode === GROUP_B && x.status === "moved" && x.startsAt!.getTime() < curWeekEnd);
+  for (let w = hasMoveThisWeek ? 1 : 0; w <= 7; w++) {
     const weekFrom = addDays(weekStart, w * 7).getTime();
-    const l = bLessons.find((x) => x.startsAt!.getTime() >= weekFrom && x.status === undefined && x.type === "seminar" && x.disciplineId === discId.prob);
+    const l = bLessons.find((x) => x.startsAt!.getTime() >= weekFrom && x.status === undefined && x.type === "seminar" && x.disciplineId === discId.prob)
+      ?? (w === 0 ? lessons.find((x) => x.groupCode === GROUP_B && x.startsAt!.getTime() >= weekFrom && x.startsAt!.getTime() < curWeekEnd && x.status === undefined && x.type === "seminar") : undefined);
     if (l) {
       l.originalStartsAt = l.startsAt;
       l.startsAt = mskAt(l.startsAt!, SLOTS[4][0], SLOTS[4][1]);
