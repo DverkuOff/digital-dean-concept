@@ -94,7 +94,7 @@ href="https://orientir.rapira-cloud.ru">orientir.rapira-cloud.ru</a></td>
 <td>Демо-видео</td>
 <td><a
 href="https://orientir.rapira-cloud.ru/video/demo.mp4">orientir.rapira-cloud.ru/video/demo.mp4</a></td>
-<td>2:39, без звука, с титрами</td>
+<td>2:32, без звука, с титрами</td>
 </tr>
 <tr>
 <td>Исходный код</td>
@@ -325,10 +325,12 @@ href="https://github.com/DverkuOff/digital-dean-concept">github.com/DverkuOff/di
 </thead>
 <tbody>
 <tr>
-<td><strong>Claude Code (CLI)</strong></td>
-<td>Основной ИИ-ассистент. Исследование, генерация и отбор идей, план,
-весь код приложения, спецификации, тесты, README, сборка демо-видео и
-картинок для README</td>
+<td><strong>Claude Code (CLI)</strong>, модель Claude Opus 5.5 с
+контекстом 1M токенов</td>
+<td>Основной ИИ-ассистент и среда разработки: отдельной IDE не было, вся
+работа шла в Claude Code в терминале. Исследование, генерация и отбор
+идей, план, весь код приложения, спецификации, тесты, README, сборка
+демо-видео и картинок для README</td>
 <td><code>docs/process/prompts.md</code>, <code>CLAUDE.md</code>, README
 «Как работали с ИИ»</td>
 </tr>
@@ -367,7 +369,7 @@ href="https://github.com/DverkuOff/digital-dean-concept">github.com/DverkuOff/di
 </tr>
 <tr>
 <td>Playwright</td>
-<td>80 сценариев в браузере на ширине 360 px, съёмка скриншотов, запись
+<td>83 сценария в браузере на ширине 360 px, съёмка скриншотов, запись
 экрана для демо-видео</td>
 <td><code>e2e/</code>, <code>playwright.screens.config.ts</code>,
 <code>pitch/demo/scripts/record.mjs</code></td>
@@ -421,7 +423,17 @@ Auth, argon2id, zod</td>
 </tbody>
 </table>
 <p>Дизайн и тексты интерфейса делал тот же ассистент, прямо в коде, по
-правилам <code>.claude/rules/ui.md</code>. Изображения в README и в этом
+правилам <code>.claude/rules/ui.md</code>. Для анимаций и полировки
+интерфейса ассистент использовал скиллы Claude Code: <a
+href="https://github.com/emilkowalski/skills">emilkowalski/skills</a>
+(анимации) и apple-design.</p>
+<p>Логотип «Ориентира» (компас в синем квадрате) нарисовал тот же
+ассистент кодом, как SVG (<code>src/app/icon.svg</code>); PNG-иконки для
+установки на телефон сделаны из него. Обложка README
+(<code>media/hero.webp</code>) собрана ассистентом из настоящих
+скриншотов прототипа. Генераторы картинок (Kandinsky, Midjourney и т.
+п.), v0 и Figma не использовались. Текст брифа перенесён из личного
+кабинета копированием, без конвертеров. Изображения в README и в этом
 документе построены на настоящих снимках работающего прототипа. Снимки
 делает Playwright, рис. 1 снят headless Chrome с живого демо.</p>
 <p>Языковая модель внутри самого кабинета не используется, поэтому
@@ -528,7 +540,7 @@ Auth, argon2id, zod</td>
 <td>20.11</td>
 <td>Запись сценария в Playwright, монтаж в HyperFrames, README с
 обложкой и скриншотами</td>
-<td>Демо-видео 2:39, README</td>
+<td>Демо-видео 2:32, README</td>
 </tr>
 </tbody>
 </table>
@@ -1057,7 +1069,7 @@ AGENTS.md</h3>
 </tr>
 </tbody>
 </table>
-<p>Защита проверяется автоматически: 12 из 80 сценариев Playwright
+<p>Защита проверяется автоматически: 12 из 83 сценариев Playwright
 посвящены безопасности. Подробно —
 <code>docs/specs/access-control.md</code> и раздел «Безопасность
 простыми словами» в README.</p>
@@ -1099,6 +1111,23 @@ push-уведомления, часть находок проверки</td>
 <td>Порядок урезания на случай нехватки времени и то, что не урезается
 никогда</td>
 <td><code>docs/plan.md</code></td>
+</tr>
+<tr>
+<td>Проверка кабинета со своего телефона: вход, «Сегодня», расписание,
+рейтинг, тёмная тема</td>
+<td>замечания вернулись ассистенту, например обрезанные чипы дней в
+тёмной теме</td>
+</tr>
+<tr>
+<td>Сервер и домен: поддомен <code>orientir.rapira-cloud.ru</code>,
+доступ к серверу для ассистента</td>
+<td><code>deploy/</code>, README; саму выкладку по ssh делал
+ассистент</td>
+</tr>
+<tr>
+<td>Просмотр демо-видео и замечания к нему: курсор вместо кругов,
+плавность, текст титров</td>
+<td><code>pitch/demo/</code></td>
 </tr>
 </tbody>
 </table>
