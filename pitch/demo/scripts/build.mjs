@@ -65,9 +65,9 @@ scene("intro", INTRO, { kind: "intro" });
   });
   vid("v-today", c, s, ms, end - ms);
   const at = (l) => r2(s + mark(c, l) - ms);
-  cues.push({ scene: "today", at: at("today") + 0.4, text: "Пару перенесли. Это первое, что Максим видит утром" });
+  cues.push({ scene: "today", at: at("today") + 0.4, text: "Сверху то, что поменялось: перенос, другая аудитория, возврат заявки" });
   cues.push({ scene: "today", at: at("retake-card"), text: "Пересдача через 12 дней. В той же карточке срок заявления" });
-  cues.push({ scene: "today", at: at("retake-card") + 4.4, text: "Ниже пары на сегодня и рейтинг" });
+  cues.push({ scene: "today", at: at("retake-card") + 4.4, text: "Ниже ближайшие пары и рейтинг" });
 }
 
 // S2: расписание.
@@ -80,7 +80,7 @@ scene("intro", INTRO, { kind: "intro" });
   });
   vid("v-schedule", c, s, ms, end - ms);
   const at = (l) => r2(s + mark(c, l) - ms);
-  cues.push({ scene: "schedule", at: at("day") - 0.9, text: "Семинар перенесли с 10:40 на 16:00 по просьбе кафедры" });
+  cues.push({ scene: "schedule", at: at("day") - 0.9, text: "У перенесённой пары видно старое время и причину" });
   cues.push({ scene: "schedule", at: at("week") + 1.2, text: "На неделе сверху сводка, что поменялось" });
   cues.push({ scene: "schedule", at: at("month") + 1.2, text: "В месяце видны экзамены и пересдача" });
 }

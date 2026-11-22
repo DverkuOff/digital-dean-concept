@@ -415,7 +415,15 @@ await staff.close();
   await r.click(nav("Сегодня"));
   await r.wait(op.waitForURL(/\/today/));
   await r.settle(700);
-  await r.bring(op.locator('[data-testid="today-card"][data-kind="retake"]'), 200, 1.6);
+  // Карточка пересдачи может оказаться ниже первых трёх — тогда раскрываем список, как сделал бы студент.
+  const retakeCard = op.locator('[data-testid="today-card"][data-kind="retake"]');
+  if (await retakeCard.isHidden()) {
+    const more = op.getByRole("button", { name: /Показать ещё/ });
+    await r.bring(more, 420, 1.2);
+    await r.click(more);
+    await r.settle(500);
+  }
+  await r.bring(retakeCard, 200, 1.6);
   r.mark("accepted");
   await r.live(3200);
   await r.stop();
