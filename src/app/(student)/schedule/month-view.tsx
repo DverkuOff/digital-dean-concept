@@ -70,7 +70,7 @@ export function MonthView({
             <span key={w}>{w}</span>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-y-1">
           {days.map((d) => {
             const k = mskDateKey(d);
             const list = lessonsBy.get(k) ?? [];
@@ -89,6 +89,10 @@ export function MonthView({
             ]
               .filter(Boolean)
               .join(", ");
+            // Точки под числом, как в календаре iOS: изменение — оранжевая первой, затем пары (не больше трёх точек).
+            const dots: string[] = [];
+            if (hasChange) dots.push(list.some((l) => l.status === "cancelled") ? "bg-destructive" : "bg-warning");
+            for (let i = 0; i < Math.min(list.length, 3) && dots.length < 3; i++) dots.push("bg-foreground/30");
             return (
               <Link
                 key={k}
@@ -99,34 +103,33 @@ export function MonthView({
                 data-has-change={hasChange || undefined}
                 data-exam={exam ? (retake ? "retake" : "exam") : undefined}
                 className={cn(
-                  "press relative flex min-h-14 flex-col rounded-lg p-1.5 text-left ring-inset hover:bg-muted md:min-h-20 md:p-2",
+                  "press-soft group flex h-14 flex-col items-center gap-1 rounded-xl pt-1 md:h-20 md:pt-2 [@media(hover:hover)]:hover:bg-muted",
                   outside && !exam && "opacity-40",
                   outside && exam && "opacity-80",
-                  past && !outside && "text-muted-foreground",
-                  exam && (retake ? "bg-destructive/10 ring-1 ring-destructive/40 dark:bg-destructive/25 dark:ring-destructive/70" : "bg-primary/10 ring-1 ring-primary/40 dark:bg-primary/25 dark:ring-primary/70"),
-                  isToday && "ring-2 ring-primary",
                 )}
               >
-                <span className={cn("text-sm font-semibold tabular-nums", isToday && "text-primary")}>{Number(k.slice(8))}</span>
-                {hasChange && <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-warning" aria-hidden />}
-                <span className="mt-auto flex flex-wrap items-center gap-0.5" aria-hidden>
-                  {exam ? (
-                    <>
-                      {/* На 360 px клетка ~40 px: подпись во всю ширину клетки, «пересд.», а не двусмысленное «пер.». */}
-                      <span className={cn("absolute inset-x-0 bottom-1.5 text-center text-[9.5px] font-semibold leading-none tracking-tight md:hidden", retake ? "text-destructive" : "text-primary")}>
-                        {retake ? "пересд." : "экзамен"}
-                      </span>
-                      <span className={cn("hidden text-xs font-semibold md:inline", retake ? "text-destructive" : "text-primary")}>{retake ? "Пересдача" : "Экзамен"}</span>
-                    </>
-                  ) : (
-                    <>
-                      {list.slice(0, 4).map((l) => (
-                        <span key={l.id} className={cn("h-1 w-1.5 rounded-full md:w-2.5", l.status === "cancelled" ? "bg-destructive/60" : "bg-foreground/35")} />
-                      ))}
-                      {list.length > 0 && <span className="hidden pl-0.5 text-[11px] text-muted-foreground md:inline">{list.length}</span>}
-                    </>
+                <span
+                  className={cn(
+                    "grid size-8 place-items-center rounded-full text-[15px] tabular-nums md:size-9",
+                    past && !outside && !isToday && "text-muted-foreground",
+                    exam && !isToday && (retake ? "bg-destructive/12 font-semibold text-destructive ring-1 ring-inset ring-destructive/45 dark:bg-destructive/25 dark:ring-destructive/70" : "bg-primary/12 font-semibold text-primary ring-1 ring-inset ring-primary/45 dark:bg-primary/25 dark:ring-primary/70"),
+                    isToday && "bg-primary font-semibold text-primary-foreground",
                   )}
+                >
+                  {Number(k.slice(8))}
                 </span>
+                {exam ? (
+                  <span className={cn("text-[10px] font-semibold leading-none md:text-xs", retake ? "text-destructive" : "text-primary")} aria-hidden>
+                    <span className="md:hidden">{retake ? "пересд." : "экз."}</span>
+                    <span className="hidden md:inline">{retake ? "Пересдача" : "Экзамен"}</span>
+                  </span>
+                ) : (
+                  <span className="flex h-1.5 items-center gap-[3px]" aria-hidden>
+                    {dots.map((c, i) => (
+                      <span key={i} className={cn("size-[5px] rounded-full", c)} />
+                    ))}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -134,16 +137,19 @@ export function MonthView({
       </div>
       <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-1 w-2.5 rounded-full bg-foreground/35" aria-hidden /> пара
+          <span className="size-[5px] rounded-full bg-foreground/30" aria-hidden /> пара
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-warning" aria-hidden /> изменения
+          <span className="size-[5px] rounded-full bg-warning" aria-hidden /> изменение
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-2.5 rounded-sm bg-primary/40 ring-1 ring-primary dark:bg-primary/60" aria-hidden /> экзамен
+          <span className="size-3 rounded-full bg-primary/12 ring-1 ring-inset ring-primary/45 dark:bg-primary/25 dark:ring-primary/70" aria-hidden /> экзамен
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-2.5 rounded-sm bg-destructive/35 ring-1 ring-destructive dark:bg-destructive/60" aria-hidden /> пересдача
+          <span className="size-3 rounded-full bg-destructive/12 ring-1 ring-inset ring-destructive/45 dark:bg-destructive/25 dark:ring-destructive/70" aria-hidden /> пересдача
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-3 rounded-full bg-primary" aria-hidden /> сегодня
         </span>
       </p>
 
