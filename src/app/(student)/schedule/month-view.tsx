@@ -80,7 +80,6 @@ export function MonthView({
             const exam = dayExams.length > 0;
             const isToday = k === todayKey;
             const outside = !inMonth(d);
-            const past = k < todayKey;
             const label = [
               `${formatShortWeekday(d)}, ${formatDayMonth(d)}`,
               list.length ? `пар: ${list.length}` : "пар нет",
@@ -89,10 +88,8 @@ export function MonthView({
             ]
               .filter(Boolean)
               .join(", ");
-            // Точки под числом, как в календаре iOS: изменение — оранжевая первой, затем пары (не больше трёх точек).
-            const dots: string[] = [];
-            if (hasChange) dots.push(list.some((l) => l.status === "cancelled") ? "bg-destructive" : "bg-warning");
-            for (let i = 0; i < Math.min(list.length, 3) && dots.length < 3; i++) dots.push("bg-foreground/30");
+            const cancelled = list.some((l) => l.status === "cancelled");
+            const free = list.length === 0 && !exam;
             return (
               <Link
                 key={k}
@@ -103,53 +100,53 @@ export function MonthView({
                 data-has-change={hasChange || undefined}
                 data-exam={exam ? (retake ? "retake" : "exam") : undefined}
                 className={cn(
-                  "press-soft group flex h-14 flex-col items-center gap-1 rounded-xl pt-1 md:h-20 md:pt-2 [@media(hover:hover)]:hover:bg-muted",
+                  "press-soft flex h-12 flex-col items-center gap-[3px] rounded-lg pt-1.5 md:h-20 md:gap-1 md:pt-2",
+                  // Наведение — серая плашка; нажатие и сегодняшний день — та же плашка, только синяя.
+                  !exam && !isToday && "[@media(hover:hover)]:hover:bg-muted active:bg-primary/15",
+                  // Экзамен и пересдача — тонированная плашка на всю клетку, а не кружок вокруг числа.
+                  exam && !isToday && (retake ? "bg-destructive/10 text-destructive dark:bg-destructive/20" : "bg-primary/10 text-primary dark:bg-primary/20"),
+                  isToday && "bg-primary text-primary-foreground",
                   outside && !exam && "opacity-40",
                   outside && exam && "opacity-80",
                 )}
               >
                 <span
                   className={cn(
-                    "grid size-8 place-items-center rounded-full text-[15px] tabular-nums md:size-9",
-                    past && !outside && !isToday && "text-muted-foreground",
-                    exam && !isToday && (retake ? "bg-destructive/12 font-semibold text-destructive ring-1 ring-inset ring-destructive/45 dark:bg-destructive/25 dark:ring-destructive/70" : "bg-primary/12 font-semibold text-primary ring-1 ring-inset ring-primary/45 dark:bg-primary/25 dark:ring-primary/70"),
-                    isToday && "bg-primary font-semibold text-primary-foreground",
+                    "text-[15px] leading-5 tabular-nums md:text-base",
+                    free && !isToday && "text-muted-foreground",
+                    (exam || isToday) && "font-semibold",
                   )}
                 >
                   {Number(k.slice(8))}
                 </span>
+                {/* Изменение — точка под числом: оранжевая, отмена — красная. */}
+                {hasChange ? <span className={cn("size-[5px] rounded-full", cancelled ? "bg-destructive" : "bg-warning", isToday && "ring-2 ring-primary-foreground/80")} aria-hidden /> : null}
                 {exam ? (
-                  <span className={cn("text-[10px] font-semibold leading-none md:text-xs", retake ? "text-destructive" : "text-primary")} aria-hidden>
-                    <span className="md:hidden">{retake ? "пересд." : "экз."}</span>
+                  <span className="text-[10px] font-semibold leading-none md:text-xs" aria-hidden>
+                    <span className="md:hidden">{retake ? "пересд." : "экзамен"}</span>
                     <span className="hidden md:inline">{retake ? "Пересдача" : "Экзамен"}</span>
                   </span>
-                ) : (
-                  <span className="flex h-1.5 items-center gap-[3px]" aria-hidden>
-                    {dots.map((c, i) => (
-                      <span key={i} className={cn("size-[5px] rounded-full", c)} />
-                    ))}
-                  </span>
-                )}
+                ) : null}
               </Link>
             );
           })}
         </div>
       </div>
-      <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="size-[5px] rounded-full bg-foreground/30" aria-hidden /> пара
-        </span>
+      <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span className="size-[5px] rounded-full bg-warning" aria-hidden /> изменение
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-3 rounded-full bg-primary/12 ring-1 ring-inset ring-primary/45 dark:bg-primary/25 dark:ring-primary/70" aria-hidden /> экзамен
+          <span className="size-[5px] rounded-full bg-destructive" aria-hidden /> отмена
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-3 rounded-full bg-destructive/12 ring-1 ring-inset ring-destructive/45 dark:bg-destructive/25 dark:ring-destructive/70" aria-hidden /> пересдача
+          <span className="h-2.5 w-3.5 rounded-[3px] bg-primary" aria-hidden /> сегодня
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-3 rounded-full bg-primary" aria-hidden /> сегодня
+          <span className="h-2.5 w-3.5 rounded-[3px] bg-primary/25 dark:bg-primary/45" aria-hidden /> экзамен
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-3.5 rounded-[3px] bg-destructive/25 dark:bg-destructive/45" aria-hidden /> пересдача
         </span>
       </p>
 
