@@ -499,7 +499,7 @@ const html = `<!doctype html>
       @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fonts/IBMPlexMono-400-cyrillic.woff2') format('woff2'); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
       @font-face { font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fonts/IBMPlexMono-400-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
       :root {
-        --ground: #edf1f8;
+        --ground: #ebecef; /* ровный нейтральный фон: без свечений и сетки */
         --ink: #111a33;
         --muted: #4a5470;
         --accent: #2a4fbf;
@@ -514,15 +514,15 @@ const html = `<!doctype html>
       html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--ground); }
       #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--ground); color: var(--ink); font-family: var(--font); }
       .bg { position: absolute; inset: 0; }
-      .glow { position: absolute; border-radius: 50%; }
+      .glow, #grid { display: none; }
       #glow-a { width: 1100px; height: 1100px; left: -260px; top: -320px; background: radial-gradient(circle, rgba(42,79,191,0.14), rgba(42,79,191,0) 62%); }
       #glow-b { width: 1200px; height: 1200px; right: -380px; bottom: -520px; background: radial-gradient(circle, rgba(232,163,58,0.11), rgba(232,163,58,0) 60%); }
       #grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(17,26,51,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(17,26,51,0.035) 1px, transparent 1px); background-size: 64px 64px; }
 
       /* Телефон: рамка и экран 390×844 css px (запись 780×1688) */
-      /* Экран телефона без корпуса: скруглённая карточка, радиус как у дисплея iPhone (47,33 pt при ширине 390) */
-      #phone { position: absolute; left: ${PH.left}px; top: ${PH.top}px; width: 416px; height: 900px; transform-origin: 0 0; border-radius: 52px; box-shadow: var(--ring), var(--shadow); }
-      #phone .screen { position: absolute; left: 0; top: 0; width: 416px; height: 900px; border-radius: 52px; overflow: hidden; background: #f7f8fc; }
+      /* Экран телефона без корпуса: скруглённая карточка; радиус 22 px — интерфейс записан без safe-area и при большем радиусе углы обрезают шапку и нижнее меню */
+      #phone { position: absolute; left: ${PH.left}px; top: ${PH.top}px; width: 416px; height: 900px; transform-origin: 0 0; border-radius: 22px; box-shadow: var(--ring), var(--shadow); }
+      #phone .screen { position: absolute; left: 0; top: 0; width: 416px; height: 900px; border-radius: 22px; overflow: hidden; background: #f7f8fc; }
       .media { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 
       /* Окно браузера методиста: экран 1120×700 (запись 2160×1350) */
